@@ -49,3 +49,19 @@ test("deadline pressure lowers the score", () => {
   const closed = fitScore({ ...o, responseDeadline: addDays(now, -1).toISOString() }, now);
   assert.equal(closed.criteria.find((c) => c.key === "time")!.label, "Deadline passed");
 });
+
+test("what the documents say changes the size check and flags bonds and the site visit", async () => {
+  const { extractBidDetails } = await import("./bid-details.ts");
+  const o = { ...byId["DEMO-0003"]!, attachments: null };
+  const docs = [{ name: "Notice", text: "The magnitude of construction is between $1,000,000 and $2,000,000. Performance and payment bonds are required. A site visit has been scheduled on Tuesday, October 27, 2026 at 9:00 AM." }];
+  const details = extractBidDetails(o.id, docs, [], "fp", now);
+  const fit = fitScore(o, now, details);
+  const by = Object.fromEntries(fit.criteria.map((c) => [c.key, c]));
+  assert.equal(by.simple!.label, "Big job: $1M–$2M");
+  assert.equal(by.simple!.level, "bad");
+  assert.equal(by.bonds!.label, "Bonds required");
+  assert.equal(by.bonds!.points, 0);
+  assert.equal(by.visit!.label, "Site visit was Oct 27", "yesterday counts as passed");
+  assert.equal(fit.criteria.reduce((n, c) => n + c.max, 0), 100, "flags don't change the scale");
+  assert.notEqual(fit.verdict, "Strong fit", "a $1M+ job isn't a strong first bid");
+});

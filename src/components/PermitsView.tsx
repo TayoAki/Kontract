@@ -116,6 +116,12 @@ function PermitList() {
               </Chip>
             ))}
         </div>
+        <Toggle checked={Boolean(query.hasContractor)} onChange={(v) => setQuery({ hasContractor: v || undefined })}>
+          <span title="Permits that name the contractor: someone to call, and a business you could recruit">
+            Names a contractor
+            {results && !loading ? <span className="text-ink-3"> · {(query.hasContractor ? results.addresses : results.withContractor).toLocaleString()}</span> : null}
+          </span>
+        </Toggle>
         <button
           type="button"
           onClick={() => setMore((v) => !v)}
@@ -123,7 +129,7 @@ function PermitList() {
           className="flex h-8 w-full items-center justify-between rounded-lg bg-panel-2 px-2.5 text-xs text-ink-2 hover:text-ink"
         >
           <span className="truncate">
-            {[query.leadsOnly ? "Leads only" : "All permits", query.minStrength && `${STRENGTH_LABEL[query.minStrength]}+`, query.residentialOnly && "Residential", query.minValue && `${money(query.minValue, { compact: true })}+`, query.zip, query.q && `“${query.q}”`]
+            {[query.leadsOnly ? "Leads only" : "All permits", query.hasContractor && "Names a contractor", query.minStrength && `${STRENGTH_LABEL[query.minStrength]}+`, query.residentialOnly && "Residential", query.minValue && `${money(query.minValue, { compact: true })}+`, query.zip, query.q && `“${query.q}”`]
               .filter(Boolean)
               .join(" · ")}
           </span>
@@ -181,7 +187,7 @@ function PermitList() {
                 onClick={() => {
                   setKeyword("");
                   setZip("");
-                  setQuery({ ...DEFAULT_PERMIT_QUERY, state: query.state, market: query.market, days: query.days, trade: query.trade, q: undefined, zip: undefined, minValue: undefined, minStrength: undefined });
+                  setQuery({ ...DEFAULT_PERMIT_QUERY, state: query.state, market: query.market, days: query.days, trade: query.trade, q: undefined, zip: undefined, minValue: undefined, minStrength: undefined, hasContractor: undefined });
                 }}
               >
                 Reset

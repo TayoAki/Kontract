@@ -58,6 +58,25 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS quote_request_user ON quote_request (user_id, deal_id);
     CREATE INDEX IF NOT EXISTS quote_request_email ON quote_request (sub_email);
+
+    -- A permit passed to a subcontractor as a lead. Like quote links, the
+    -- token is the sub's only credential.
+    CREATE TABLE IF NOT EXISTS lead_share (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      contact_id TEXT,
+      to_name TEXT NOT NULL,
+      to_email TEXT,
+      permit_id TEXT NOT NULL,
+      trade TEXT NOT NULL,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      viewed_at TEXT,
+      responded_at TEXT,
+      snapshot TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS lead_share_user ON lead_share (user_id, permit_id);
+    CREATE INDEX IF NOT EXISTS lead_share_email ON lead_share (to_email);
   `);
   g.__kontractDb = db;
   return db;

@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowRight, CalendarClock, ExternalLink, FileDown, Loader2, Mail, MapPin, Phone, RefreshCw, ShieldCheck, Sparkles, Star } from "lucide-react";
+import { ArrowRight, CalendarClock, ExternalLink, Loader2, Mail, MapPin, Phone, RefreshCw, ShieldCheck, Sparkles, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isSmallBusinessSetAside } from "@/lib/fit-score";
 import { daysUntil, formatDate, placeLabel } from "@/lib/format";
 import { rulesBreakdown } from "@/lib/rules";
 import type { Breakdown, Deal } from "@/lib/types";
 import { useApp, useIsTracked } from "../state";
+import { BidDocs } from "./BidDocs";
 import { Avatar, Badge, Button, Card, cx, dueText, dueTone, ErrorNote, Note, Section } from "../ui";
 
 export function useExplain(deal: Deal) {
@@ -118,76 +119,6 @@ function DescriptionBlock({ deal }: { deal: Deal }) {
   );
 }
 
-function Attachments({ deal }: { deal: Deal }) {
-  const o = deal.opportunity;
-  const updateDeal = useApp((s) => s.updateDeal);
-  const hasKey = useApp((s) => Boolean(s.status?.sam));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/opportunities/attachments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: o.id, postedDate: o.postedDate }),
-      });
-      const body = (await res.json()) as { attachments?: string[]; error?: string };
-      if (!res.ok) throw new Error(body.error || "Couldn't list attachments");
-      updateDeal(deal.id, (d) => ({ ...d, opportunity: { ...d.opportunity, attachments: body.attachments ?? [] } }), { track: false });
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const samLink = (
-    <a href={o.samUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline">
-      See {o.source === "sled" ? "documents" : "attachments"} on {o.portal ?? "SAM.gov"} <ExternalLink className="size-3.5" />
-    </a>
-  );
-
-  if (o.attachments === null) {
-    return (
-      <div className="flex flex-wrap items-center gap-3">
-        {error && <ErrorNote>{error}</ErrorNote>}
-        {hasKey && o.source !== "sled" && (
-          <Button size="sm" onClick={() => void load()} busy={busy}>
-            <FileDown className="size-3.5" /> List attachments
-          </Button>
-        )}
-        {samLink}
-      </div>
-    );
-  }
-  if (o.attachments.length === 0) return <p className="text-[13px] text-ink-2">No attachments on this notice.</p>;
-  return (
-    <ul className="flex flex-wrap gap-2">
-      {o.attachments.map((a, i) => {
-        const isUrl = /^https?:\/\//.test(a);
-        const name = isUrl ? `Attachment ${i + 1}` : a;
-        const cls = "inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs text-ink-2";
-        return (
-          <li key={`${a}-${i}`}>
-            {isUrl ? (
-              <a href={a} target="_blank" rel="noreferrer" className={cx(cls, "hover:text-ink")}>
-                <FileDown className="size-3.5" /> {name}
-              </a>
-            ) : (
-              <span className={cls}>
-                <FileDown className="size-3.5" /> {name}
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 export function OverviewTab({ deal }: { deal: Deal }) {
   const o = deal.opportunity;
   const tracked = useIsTracked(deal.id);
@@ -257,6 +188,10 @@ export function OverviewTab({ deal }: { deal: Deal }) {
         />
       </div>
 
+      <Section title="From the bid documents" subtitle="Budget, bonds, dates and requirements, read from the attachments">
+        <BidDocs deal={deal} />
+      </Section>
+
       <Section
         title="In plain English"
         subtitle={b.source === "claude" ? "Claude's read of the notice" : "Quick read from the title and description"}
@@ -294,12 +229,8 @@ export function OverviewTab({ deal }: { deal: Deal }) {
         {!claude && <Note>Add ANTHROPIC_API_KEY to get Claude&apos;s full read of each notice, including what&apos;s buried in the description.</Note>}
       </Section>
 
-      <Section
-        title="What the notice says"
-        subtitle={o.attachments ? `${o.attachments.length} attachment${o.attachments.length === 1 ? "" : "s"}` : undefined}
-      >
+      <Section title="What the notice says">
         <DescriptionBlock deal={deal} />
-        <Attachments deal={deal} />
       </Section>
 
       <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">

@@ -23,7 +23,9 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/sam-bulk.ts` | SAM.gov's daily file: download, index, hourly freshness check, search (plus state/local bids), descriptions |
 | `src/lib/sled-sources.ts`, `sled.ts` | State and local bid feeds (Socrata): row → Opportunity, 3-hourly pull, health |
 | `src/lib/csv.ts`, `sam-normalize.ts`, `opportunity-search.ts` | Streaming CSV + encoding, row → Opportunity (merging amendments), filters/sort/paging |
-| `src/lib/sam.ts` | SAM.gov API, only for attachment links (needs a key; ~10 requests/day without a role) |
+| `src/lib/sam.ts` | SAM.gov API, only a fallback for attachment links (needs a key; ~10 requests/day without a role) |
+| `src/lib/doc-text.ts` | Text out of Word, Excel, PowerPoint, PDF and HTML attachments (zip-bomb and size limits; nothing executed) |
+| `src/lib/bid-details.ts`, `bid-reading.ts`, `bid-documents.ts` | Rules for budget/bonds/site visit/dates/requirements/forms with citations; what to send Claude and checking its quotes; listing + downloading SAM.gov attachments (public endpoints) and caching per attachment set |
 | `src/lib/usaspending.ts`, `pricing-stats.ts` | Past awards, typical per-year price, past winners |
 | `src/lib/places.ts` | Local businesses via Google Places or Apify |
 | `src/lib/claude.ts`, `prompts.ts` | Breakdown (structured output) and streamed drafts |
@@ -33,6 +35,7 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/permit-sources.ts`, `permit-normalize.ts`, `permit-trades.ts` | The source register (feeds per city, cadence, gaps), row → Permit, grouping by address, which trades a permit is a lead for and how strongly, what work a job needs |
 | `src/lib/permits.ts`, `permit-health.ts`, `permit-pitch.ts` | Fetch + cache permits per feed, 6-hourly sync, contractors pulling them near a job; feed health from past checks; the sub invite |
 | `src/lib/quote.ts`, `quotes.ts` | Quote links: what a sub sees (no pricing, contacts scrubbed), validating and applying a quote to the bid; the SQLite rows |
+| `src/lib/lead-share.ts`, `leads.ts` | Passing a permit to a sub as a lead: the reach plan when there's no contact info, the message and letter; the SQLite rows behind `/l/:token` |
 | `src/lib/crm.ts` | Sub bench: stages (Found → Contacted → Quoted → Active sub), touches, follow-ups, jobs each sub quoted or won |
 | `src/lib/accounts.ts`, `plans.ts`, `sub-leads.ts` | Prime vs sub accounts, invites onto a bench, plan limits, a sub's weekly 10 / daily leads |
 | `src/lib/digests.ts`, `digest-email.ts`, `email.ts` | Lead digest emails (Resend), weekly on free and daily on paid |

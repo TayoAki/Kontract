@@ -47,6 +47,7 @@ export function permitParams(q: PermitQuery): string {
   if (q.residentialOnly) p.set("residentialOnly", "1");
   if (q.leadsOnly) p.set("leadsOnly", "1");
   if (q.minStrength) p.set("minStrength", q.minStrength);
+  if (q.hasContractor) p.set("hasContractor", "1");
   if (q.zip) p.set("zip", q.zip);
   if (q.q) p.set("q", q.q);
   return p.toString();

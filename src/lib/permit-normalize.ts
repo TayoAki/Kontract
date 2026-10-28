@@ -198,12 +198,14 @@ export function filterPermits(all: Permit[], q: PermitQuery): Omit<PermitResults
   )
     .map((p) => (minRank ? { ...p, trades: p.trades.filter((t) => strengthRank(t.strength) >= minRank) } : p))
     .filter((p) => !q.leadsOnly || p.trades.length > 0);
+  const withContractor = base.filter((p) => p.contractor).length;
+  const shown = q.hasContractor ? base.filter((p) => p.contractor) : base;
   const byTrade: Partial<Record<TradeId, number>> = {};
-  for (const p of base) for (const t of p.trades) byTrade[t.trade] = (byTrade[t.trade] ?? 0) + 1;
-  const permits = (q.trade ? base.filter((p) => p.trades.some((t) => t.trade === q.trade)) : base).sort(
+  for (const p of shown) for (const t of p.trades) byTrade[t.trade] = (byTrade[t.trade] ?? 0) + 1;
+  const permits = (q.trade ? shown.filter((p) => p.trades.some((t) => t.trade === q.trade)) : shown).sort(
     (a, b) => b.issuedDate.localeCompare(a.issuedDate) || (b.value ?? 0) - (a.value ?? 0),
   );
-  return { permits, total: permits.length, byTrade, scanned: all.length, addresses: base.length };
+  return { permits, total: permits.length, byTrade, scanned: all.length, addresses: shown.length, withContractor };
 }
 
 export const contractorKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");

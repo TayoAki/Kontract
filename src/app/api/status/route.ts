@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 export const GET = withUser(async () => {
   const status: IntegrationStatus = {
     sam: hasSamKey(),
+    firecrawl: Boolean(process.env.FIRECRAWL_API_KEY),
     samData: await samDataStatus(),
     claude: hasClaude(),
     places: placesProvider(),

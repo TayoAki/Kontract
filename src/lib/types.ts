@@ -214,6 +214,77 @@ export interface Breakdown {
   source: "claude" | "rules";
 }
 
+/** A file attached to a notice, and whether we could read it. */
+export interface BidDocument {
+  id: string;
+  name: string;
+  url: string;
+  size: number | null;
+  postedDate: string | null;
+  read: "read" | "skipped" | "failed" | "scanned";
+  pages?: number;
+  chars?: number;
+  /** Why it was skipped or failed. */
+  note?: string;
+}
+
+/** A fact from the bid documents, with the words it came from and which document. */
+export interface Cited<T> {
+  value: T;
+  quote: string;
+  doc: string;
+}
+
+export interface BidBudget {
+  low: number | null;
+  high: number | null;
+  /** magnitude: the price range construction bids must disclose; estimate: the buyer's stated estimate; ceiling: a not-to-exceed amount. */
+  kind: "magnitude" | "estimate" | "ceiling";
+}
+
+export interface BidScopeItem {
+  description: string;
+  quantity: number | null;
+  unit: string | null;
+  /** The words in the documents this came from. */
+  quote: string;
+  doc: string;
+}
+
+/** What Claude read in the documents (only on request: it spends credits). */
+export interface BidReading {
+  summary: string;
+  scope: BidScopeItem[];
+  /** Trades the work needs (roofing, asbestos abatement, electrical…). */
+  trades: string[];
+  questions: string[];
+  risks: string[];
+  readAt: string;
+}
+
+/** Facts pulled from a notice's text and attachments. */
+export interface BidDetails {
+  noticeId: string;
+  readAt: string;
+  /** Changes when the attachments change (an amendment), so stale reads are redone. */
+  fingerprint: string;
+  documents: BidDocument[];
+  budget: Cited<BidBudget> | null;
+  bonds: Cited<string[]> | null;
+  siteVisit: Cited<{ date: string | null; mandatory: boolean }> | null;
+  questionsDue: Cited<string | null> | null;
+  period: Cited<string> | null;
+  wageDeterminations: string[];
+  evaluation: Cited<string> | null;
+  sizes: Cited<string>[];
+  requirements: Cited<string>[];
+  /** Documents to fill in and send back. */
+  forms: string[];
+  /** Rows of the price form the buyer wants filled in. */
+  priceForm: { doc: string; rows: string[] } | null;
+  reading?: BidReading | null;
+}
+
 export type Stage = "found" | "sourcing" | "quoted" | "submitted" | "won" | "lost";
 
 export interface Deal {
@@ -225,6 +296,8 @@ export interface Deal {
   submittedAt?: string;
   notes: string;
   breakdown?: Breakdown;
+  /** What the notice's documents say, once read. */
+  details?: BidDetails;
   sow?: string;
   proposal?: string;
   subs: Subcontractor[];
@@ -246,8 +319,10 @@ export interface CompanyProfile {
 }
 
 export interface IntegrationStatus {
-  /** SAM_API_KEY is set (used to list attachments). */
+  /** SAM_API_KEY is set (a fallback for listing attachments). */
   sam: boolean;
+  /** FIRECRAWL_API_KEY is set (reads subcontractor websites and state/local bid pages). */
+  firecrawl: boolean;
   samData: SamDataStatus | null;
   claude: boolean;
   places: "google" | "apify" | null;
@@ -437,6 +512,8 @@ export interface PermitQuery {
   leadsOnly?: boolean;
   /** Only tags at least this sure. */
   minStrength?: SignalStrength;
+  /** Only addresses where a permit names the contractor. */
+  hasContractor?: boolean;
 }
 
 export interface PermitSourceResult {
@@ -457,6 +534,8 @@ export interface PermitResults {
   scanned: number;
   /** Unique addresses among the filtered permits, before the trade filter. */
   addresses: number;
+  /** Of those, how many name a contractor. */
+  withContractor: number;
   sources: PermitSourceResult[];
 }
 

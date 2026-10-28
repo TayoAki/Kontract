@@ -51,6 +51,31 @@ export function priceTable(deal: Deal): string {
   return lines.join("\n");
 }
 
+function docDetails(deal: Deal) {
+  return deal.details?.noticeId === deal.opportunity.id ? deal.details : undefined;
+}
+
+function docRequirements(deal: Deal): string[] {
+  const d = docDetails(deal);
+  if (!d) return [];
+  return [
+    ...d.requirements.map((r) => r.value),
+    ...(d.wageDeterminations.length ? [`Prevailing wages apply (wage determination ${d.wageDeterminations.join(", ")})`] : []),
+  ];
+}
+
+/** Sizes and scope items from the attachments. Never the budget: this goes to subs. */
+function docsSection(deal: Deal): string {
+  const d = docDetails(deal);
+  if (!d) return "";
+  const items = d.reading?.scope.map((s) => `- ${s.description}${s.quantity != null ? `: ${s.quantity.toLocaleString()} ${s.unit ?? ""}`.trimEnd() : ""}`) ?? [];
+  const sizes = d.sizes.slice(0, 3).map((s) => `- Size: ${s.value}`);
+  const visit = d.siteVisit?.value.date ? [`- Site visit: ${formatDate(`${d.siteVisit.value.date}T12:00:00`)}${d.siteVisit.value.mandatory ? " (required)" : ""}`] : [];
+  const period = d.period ? [`- Time to complete: ${d.period.value}`] : [];
+  const all = [...items, ...sizes, ...period, ...visit];
+  return all.length ? `### From the bid documents\n${all.join("\n")}\n\n` : "";
+}
+
 export function sowTemplate(deal: Deal, profile: CompanyProfile, now: Date = new Date()): string {
   const o = deal.opportunity;
   const b = deal.breakdown ?? rulesBreakdown(o, now);
@@ -74,9 +99,9 @@ ${b.contractLength}
 ## Work to be performed
 ${lines || "- [Describe each task]"}
 
-${o.description ? `### Details from the customer\n${o.description.slice(0, 2500)}\n` : ""}
+${docsSection(deal)}${o.description ? `### Details from the customer\n${o.description.slice(0, 2500)}\n` : ""}
 ## Requirements
-${(b.keyRequirements.length ? b.keyRequirements : ["Licenses and insurance required for this work"]).map((r) => `- ${r}`).join("\n")}
+${[...new Set([...(b.keyRequirements.length ? b.keyRequirements : ["Licenses and insurance required for this work"]), ...docRequirements(deal)])].map((r) => `- ${r}`).join("\n")}
 
 ## What to include in your quote
 - Price per ${deal.pricing.lines[0]?.unit ?? "unit"}, all-in (labor, travel, materials, disposal and fees)

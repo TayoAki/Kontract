@@ -2,6 +2,7 @@
 
 import { Check, ChevronRight, Star } from "lucide-react";
 import { bidTotals, vsAnchor } from "@/lib/bid-math";
+import { budgetLabel } from "@/lib/bid-details";
 import { STAGES } from "@/lib/deal";
 import { fitScore } from "@/lib/fit-score";
 import { formatDate, money, pct } from "@/lib/format";
@@ -83,7 +84,8 @@ export function RightPanel({ deal }: { deal: Deal }) {
   const updateDeal = useApp((s) => s.updateDeal);
   const setTab = useApp((s) => s.setTab);
   const pricing = useApp((s) => s.pricing[deal.id]);
-  const fit = fitScore(deal.opportunity);
+  const fit = fitScore(deal.opportunity, undefined, deal.details?.noticeId === deal.opportunity.id ? deal.details : undefined);
+  const budget = deal.details?.noticeId === deal.opportunity.id ? deal.details.budget?.value : undefined;
   const t = bidTotals(deal.pricing);
   const multi = deal.pricing.periodLabel === "year";
   const diff = vsAnchor(deal.pricing);
@@ -170,6 +172,23 @@ export function RightPanel({ deal }: { deal: Deal }) {
             <span className="text-ink-2">Margin</span>
             <span className="font-medium text-ink tabular-nums">{pct(t.margin)}</span>
           </div>
+          {budget && (
+            <div className="flex items-baseline justify-between gap-2 px-3 py-2 text-xs">
+              <span className="text-ink-2">{budget.kind === "magnitude" ? "Their range" : budget.kind === "ceiling" ? "Their ceiling" : "Their estimate"}</span>
+              <span className="text-right">
+                <span className="font-medium text-ink tabular-nums">{budgetLabel(budget)}</span>
+                {t.priceTotal > 0 && (
+                  <span className={cx("block text-[11px]", budget.high != null && t.priceTotal > budget.high ? "text-bad" : budget.low != null && t.priceTotal < budget.low * 0.7 ? "text-warn" : "text-good")}>
+                    {budget.high != null && t.priceTotal > budget.high
+                      ? "Your price is above it"
+                      : budget.low != null && t.priceTotal < budget.low * 0.7
+                        ? "Well under it: check nothing's missing"
+                        : "Your price fits"}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </Card>
         {t.pricePerPeriod === 0 && (
           <button type="button" onClick={() => setTab("pricing")} className="mt-1.5 text-xs font-medium text-accent hover:underline">

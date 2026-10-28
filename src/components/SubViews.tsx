@@ -1,13 +1,15 @@
 "use client";
 
-import { CalendarClock, ClipboardList, CreditCard, ExternalLink, FileSignature, LogOut, MapPin, RefreshCw, Sparkles } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronUp, ClipboardList, CreditCard, ExternalLink, FileSignature, LogOut, MapPin, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { formatDate, money } from "@/lib/format";
 import { PERMIT_MARKETS, STATE_NAMES } from "@/lib/permit-sources";
 import { TRADES } from "@/lib/permit-trades";
 import type { QuoteRequest } from "@/lib/quote";
-import type { Account, Permit, SubLeads } from "@/lib/types";
+import { formatPhone, leadSnapshot } from "@/lib/lead-share";
+import type { Account, Permit, SubLeads, TradeId } from "@/lib/types";
+import { LeadView, type Sender } from "./LeadView";
 import { relDay, STRENGTH_LABEL, strengthTone } from "./PermitMarket";
 import { api, flushSaves, useApp } from "./state";
 import { Avatar, Badge, Button, Card, Empty, ErrorNote, Input, Label, Note, Section, Select, Toggle } from "./ui";
@@ -32,39 +34,100 @@ function useUpgrade() {
   return { upgrade, busy };
 }
 
-function LeadCard({ p, trade }: { p: Permit; trade: string }) {
+function useSender(): Sender {
+  const account = useApp((s) => s.account);
+  const user = useApp((s) => s.user);
+  return { company: account?.company ?? "", name: user?.name ?? "", email: user?.email ?? "", phone: account?.phone ?? "", website: account?.website };
+}
+
+function LeadCard({ p, trade }: { p: Permit; trade: TradeId }) {
+  const [open, setOpen] = useState(false);
+  const sender = useSender();
   const tag = p.trades.find((t) => t.trade === trade);
-  return (
-    <Card className="p-3.5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[14px] font-semibold text-ink">{p.address}</span>
-            {tag && <Badge tone={strengthTone(tag.strength)}>{STRENGTH_LABEL[tag.strength]}</Badge>}
-            {p.value ? <Badge tone="good">{money(p.value, { compact: true })} job</Badge> : null}
-          </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-ink-3">
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="size-3" />
-              {[p.city, p.zip].filter(Boolean).join(" ")}
-            </span>
-            <span>{p.type.split(" · ")[0]}</span>
-            <span>Issued {relDay(p.issuedDate).toLowerCase()}</span>
-          </div>
+  if (open) {
+    return (
+      <Card className="p-4">
+        <div className="mb-2 flex justify-end">
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            <ChevronUp className="size-3.5" /> Close
+          </Button>
         </div>
-        <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex h-7 shrink-0 items-center gap-1 rounded-lg border border-line-strong px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
-          City record <ExternalLink className="size-3" />
-        </a>
-      </div>
-      {tag && <p className="mt-2 text-[13px] text-ink">{tag.reason}</p>}
-      {p.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink-2">{p.description}</p>}
-      {(p.owner || p.contractor) && (
+        <LeadView s={leadSnapshot(p, trade, { company: "", name: "", email: "", phone: "" })} sender={sender} />
+      </Card>
+    );
+  }
+  return (
+    <Card className="p-0">
+      <button type="button" onClick={() => setOpen(true)} className="block w-full rounded-xl p-3.5 text-left hover:bg-panel-2" aria-expanded={false}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[14px] font-semibold text-ink">{p.address}</span>
+              {tag && <Badge tone={strengthTone(tag.strength)}>{STRENGTH_LABEL[tag.strength]}</Badge>}
+              {p.value ? <Badge tone="good">{money(p.value, { compact: true })} job</Badge> : null}
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-ink-3">
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="size-3" />
+                {[p.city, p.zip].filter(Boolean).join(" ")}
+              </span>
+              <span>{p.type.split(" · ")[0]}</span>
+              <span>Issued {relDay(p.issuedDate).toLowerCase()}</span>
+            </div>
+          </div>
+          <span className="inline-flex h-7 shrink-0 items-center gap-1 text-xs font-medium text-accent">
+            How to reach them <ChevronDown className="size-3.5" />
+          </span>
+        </div>
+        {tag && <p className="mt-2 text-[13px] text-ink">{tag.reason}</p>}
+        {p.description && <p className="mt-1 line-clamp-2 text-[13px] text-ink-2">{p.description}</p>}
         <p className="mt-1.5 text-xs text-ink-3">
-          {p.owner && <>Owner: {p.owner}. </>}
-          {p.contractor && <>Builder: {p.contractor}.</>}
+          {p.contractor ? <>Contractor: {p.contractor}{p.contractorPhone ? ` · ${formatPhone(p.contractorPhone)}` : ""}. </> : null}
+          {p.owner ? <>Owner: {p.owner}. </> : null}
+          {!p.contractor && !p.owner && "No names on this permit: mail the address or knock."}
         </p>
-      )}
+      </button>
     </Card>
+  );
+}
+
+interface SharedLead {
+  token: string;
+  status: "sent" | "viewed" | "taken" | "passed";
+  createdAt: string;
+  address: string;
+  city: string;
+  reason: string;
+  from: string;
+}
+
+/** Leads primes have passed to you directly. */
+function SharedLeads() {
+  const [leads, setLeads] = useState<SharedLead[]>([]);
+  useEffect(() => {
+    api<{ leads: SharedLead[] }>("/api/sub/shared")
+      .then((r) => setLeads(r.leads))
+      .catch(() => {});
+  }, []);
+  if (!leads.length) return null;
+  return (
+    <section className="space-y-2">
+      <h2 className="text-[13px] font-semibold text-ink-2">Sent to you · {leads.length}</h2>
+      {leads.map((l) => (
+        <a key={l.token} href={`/l/${l.token}`} className="block rounded-xl border border-accent/40 bg-accent-soft/30 p-3.5 hover:bg-accent-soft/50">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[14px] font-semibold text-ink">
+              {l.address}, {l.city}
+            </span>
+            <Badge tone={l.status === "taken" ? "good" : "accent"}>{l.status === "taken" ? "You're on it" : l.status === "passed" ? "Passed" : "New"}</Badge>
+          </div>
+          <p className="mt-1 text-[13px] text-ink-2">{l.reason}</p>
+          <p className="mt-1 text-xs text-ink-3">
+            From {l.from || "a contractor"} · {formatDate(l.createdAt, { year: undefined })}
+          </p>
+        </a>
+      ))}
+    </section>
   );
 }
 
@@ -87,11 +150,14 @@ export function SubLeadsView() {
   }, []);
   useEffect(load, [load, account?.trade, account?.market, account?.zips?.join(), account?.plan]);
 
+  const [named, setNamed] = useState(false);
+  const shown = useMemo(() => (data?.leads ?? []).filter((p) => !named || p.contractor), [data, named]);
   const byDay = useMemo(() => {
     const groups = new Map<string, Permit[]>();
-    for (const p of data?.leads ?? []) groups.set(p.issuedDate, [...(groups.get(p.issuedDate) ?? []), p]);
+    for (const p of shown) groups.set(p.issuedDate, [...(groups.get(p.issuedDate) ?? []), p]);
     return [...groups.entries()];
-  }, [data]);
+  }, [shown]);
+  const withContractor = (data?.leads ?? []).filter((p) => p.contractor).length;
 
   const daily = data?.plan === "daily";
   const trade = data?.trade ?? account?.trade;
@@ -131,7 +197,13 @@ export function SubLeadsView() {
           </Card>
         )}
 
+        <SharedLeads />
         {error && <ErrorNote>{error}</ErrorNote>}
+        {data && data.leads.length > 0 && (
+          <Toggle checked={named} onChange={setNamed}>
+            Only leads that name a contractor <span className="text-ink-3">· {withContractor} of {data.leads.length}</span>
+          </Toggle>
+        )}
         {!trade || !account?.market ? (
           <Empty
             icon={<ClipboardList className="size-8" />}
@@ -158,14 +230,14 @@ export function SubLeadsView() {
                 {relDay(day)} · {leads.length}
               </h2>
               {leads.map((p) => (
-                <LeadCard key={p.id} p={p} trade={trade} />
+                <LeadCard key={p.id} p={p} trade={trade as TradeId} />
               ))}
             </section>
           ))
         ) : (
           <div className="space-y-2">
-            {data?.leads.map((p) => (
-              <LeadCard key={p.id} p={p} trade={trade} />
+            {shown.map((p) => (
+              <LeadCard key={p.id} p={p} trade={trade as TradeId} />
             ))}
           </div>
         )}

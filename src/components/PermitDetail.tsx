@@ -4,12 +4,13 @@ import { Check, Copy, ExternalLink, Globe, Mail, MapPin, Phone, Plus, Search, Se
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { crmStageLabel, findContact, followUpIn, logActivity } from "@/lib/crm";
 import { formatDate, money } from "@/lib/format";
+import { leadMessage, reachPlan } from "@/lib/lead-share";
 import { subInvite } from "@/lib/permit-pitch";
 import type { CrmContact, Permit, PermitContractor, TradeId } from "@/lib/types";
 import { PermitMarket, relDay, STRENGTH_LABEL, strengthTone, useTradeLabel } from "./PermitMarket";
 import { marketName, usePermits } from "./permits-state";
 import { useApp } from "./state";
-import { Badge, Button, Card, cx, Empty, ErrorNote, Input, Note, Section, TextArea } from "./ui";
+import { Badge, Button, Card, cx, Empty, ErrorNote, Input, Note, Section, Select, TextArea } from "./ui";
 
 /** A local business you could put on your bench. */
 interface Candidate {
@@ -293,6 +294,166 @@ function Invite({ permit, trade, recipient }: { permit: Permit; trade: TradeId; 
   );
 }
 
+interface Share {
+  token: string;
+  toName: string;
+  toEmail: string | null;
+  status: "sent" | "viewed" | "taken" | "passed";
+  createdAt: string;
+  trade: TradeId;
+}
+
+const SHARE_LABEL: Record<Share["status"], string> = { sent: "Sent", viewed: "Opened", taken: "On it", passed: "Passed" };
+
+/** Pass this permit to a sub as a lead: a private link with the lead and how to reach the customer. */
+function PassLead({ permit, trade }: { permit: Permit; trade: TradeId }) {
+  const contacts = useApp((s) => s.contacts);
+  const upsertContact = useApp((s) => s.upsertContact);
+  const profile = useApp((s) => s.profile);
+  const say = useApp((s) => s.say);
+  const label = useTradeLabel();
+  const bench = useMemo(
+    () => Object.values(contacts).filter((c) => c.stage !== "not-a-fit").sort((a, b) => Number(b.trade === trade) - Number(a.trade === trade) || a.company.localeCompare(b.company)),
+    [contacts, trade],
+  );
+  const [to, setTo] = useState<string>("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [shares, setShares] = useState<Share[]>([]);
+  const [made, setMade] = useState<{ link: string; message: string; email: string | null; subject: string } | null>(null);
+  const contact = to && to !== "other" ? contacts[to] : undefined;
+  const plan = reachPlan(permit, trade);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMade(null);
+    fetch(`/api/leads/share?permit=${encodeURIComponent(permit.id)}`)
+      .then((r) => r.json() as Promise<{ shares?: Share[] }>)
+      .then((b) => !cancelled && setShares(b.shares ?? []))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [permit.id]);
+
+  useEffect(() => {
+    if (!to && bench[0]) setTo(bench[0].trade === trade ? bench[0].id : "");
+  }, [bench, to, trade]);
+
+  async function make() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/leads/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ permit, trade, ...(contact ? { contactId: contact.id } : { toName: name, toEmail: email }), note }),
+      });
+      const body = (await res.json()) as { share?: Share & { snapshot: Parameters<typeof leadMessage>[0] }; error?: string };
+      if (!res.ok || !body.share) throw new Error(body.error || "Couldn't make the lead link");
+      const link = `${window.location.origin}/l/${body.share.token}`;
+      const message = leadMessage(body.share.snapshot, link, contact?.contactName);
+      setMade({ link, message, email: body.share.toEmail, subject: `A ${label(trade).toLowerCase()} lead: ${permit.address}` });
+      setShares((xs) => [body.share!, ...xs]);
+      if (contact) upsertContact(logActivity(contact, "note", `Sent a ${label(trade).toLowerCase()} lead: ${permit.address}, ${permit.city}`));
+      try {
+        await navigator.clipboard.writeText(message);
+        say("Lead link made and the message copied.");
+      } catch {
+        say("Lead link made.");
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const ready = contact || name.trim();
+  return (
+    <Section step={4} title="Pass it to a sub as a lead" subtitle="They get a private link: the address, why it's work for them, and how to reach the customer.">
+      <Card className="space-y-3 p-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-xs text-ink-2">Send to</span>
+            <Select value={to} onChange={(e) => setTo(e.target.value)} aria-label="Send to">
+              <option value="">Pick a sub…</option>
+              {bench.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company}
+                  {c.trade ? ` · ${label(c.trade as TradeId)}` : ""}
+                  {c.email ? "" : " (no email)"}
+                </option>
+              ))}
+              <option value="other">Someone not on my bench</option>
+            </Select>
+          </label>
+          {to === "other" && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="mb-1 block text-xs text-ink-2">Company</span>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Green Acres Fence" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs text-ink-2">Email (optional)</span>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sam@…" type="email" />
+              </label>
+            </div>
+          )}
+        </div>
+        <TextArea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="A note for them (optional)" aria-label="Note" className="text-[13px]" />
+        <div className="rounded-lg bg-panel-2 px-3 py-2 text-xs text-ink-2">
+          <span className="font-medium text-ink">How they&apos;ll reach the customer: </span>
+          {plan[0]!.text}
+          {!permit.contractorPhone && !permit.owner && " No phone or email on this permit, so the lead page also gives them a printable letter, the map, and the city record."}
+        </div>
+        {error && <ErrorNote>{error}</ErrorNote>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" size="sm" onClick={() => void make()} busy={busy} disabled={!ready} title={ready ? undefined : "Pick a sub first"}>
+            <Send className="size-3.5" /> Make lead link
+          </Button>
+          {made && (
+            <>
+              <Button size="sm" onClick={() => void navigator.clipboard.writeText(made.message).then(() => say("Copied."))}>
+                <Copy className="size-3.5" /> Copy message
+              </Button>
+              {made.email && (
+                <a href={`mailto:${made.email}?subject=${encodeURIComponent(made.subject)}&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                  <Mail className="size-3.5" /> Email
+                </a>
+              )}
+              {contact?.phone && (
+                <a href={`sms:${contact.phone}?&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                  <Phone className="size-3.5" /> Text
+                </a>
+              )}
+              <a href={made.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                Preview <ExternalLink className="size-3" />
+              </a>
+            </>
+          )}
+        </div>
+        {!profile?.companyName && <p className="text-[11px] text-ink-3">Add your company in Settings so the sub knows who sent it.</p>}
+      </Card>
+      {shares.length > 0 && (
+        <ul className="divide-y divide-line rounded-lg border border-line bg-panel">
+          {shares.map((x) => (
+            <li key={x.token} className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+              <span className="min-w-0 truncate text-ink">
+                {x.toName} <span className="text-ink-3">· {label(x.trade)} · {formatDate(x.createdAt, { year: undefined })}</span>
+              </span>
+              <Badge tone={x.status === "taken" ? "good" : x.status === "passed" ? "neutral" : x.status === "viewed" ? "accent" : "neutral"}>{SHARE_LABEL[x.status]}</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
@@ -410,6 +571,7 @@ export function PermitDetail({ permit, listButton }: { permit: Permit; listButto
 
             {trade && <Recruit key={`${permit.market}:${trade}`} permit={permit} trade={trade} recipient={recipient} setRecipient={setRecipient} />}
             {trade && <Invite permit={permit} trade={trade} recipient={recipient} />}
+            {trade && <PassLead permit={permit} trade={trade} />}
 
             <div className="border-t border-line pt-6 xl:hidden">
               <PermitMarket />

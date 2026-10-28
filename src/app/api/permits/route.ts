@@ -21,6 +21,7 @@ export const GET = withUser(async (req) => {
     q: p.get("q") || undefined,
     zip: p.get("zip")?.match(/^\d{5}$/)?.[0],
     leadsOnly: p.get("leadsOnly") === "1",
+    hasContractor: p.get("hasContractor") === "1",
     minStrength: STRENGTHS.find((x) => x === p.get("minStrength")),
   };
   try {

@@ -1,5 +1,6 @@
-import { daysUntil } from "./format.ts";
-import type { Opportunity } from "./types.ts";
+import { budgetLabel, daysTo } from "./bid-details.ts";
+import { daysUntil, formatDate } from "./format.ts";
+import type { BidDetails, Opportunity } from "./types.ts";
 
 // Scores an opportunity on the things that make a first bid winnable:
 // a service (not a product), something you can understand at a glance,
@@ -48,7 +49,38 @@ export function isBiddable(type: string): boolean {
   return /^(solicitation|combined synopsis)/i.test(type.trim());
 }
 
-export function fitScore(o: Opportunity, now: Date = new Date()): FitScore {
+/** Job size from the budget the documents disclose; null when they don't. */
+function sizeCriterion(details: BidDetails | undefined): FitCriterion | null {
+  const b = details?.budget?.value;
+  if (!b) return null;
+  const label = budgetLabel(b);
+  const top = b.high ?? b.low ?? 0;
+  if ((b.low ?? 0) >= 1_000_000) return { key: "simple", label: `Big job: ${label}`, level: "bad", detail: "Expect bonding, a full-time superintendent and a sub who runs jobs this size.", points: 0, max: 20 };
+  if (top > 250_000) return { key: "simple", label: `Mid-size job: ${label}`, level: "ok", detail: "Doable with one strong sub. Check they can carry the bonding and insurance.", points: 10, max: 20 };
+  return { key: "simple", label: `Small job: ${label}`, level: "good", detail: "A size one local sub can handle.", points: 20, max: 20 };
+}
+
+/** Bonds and the site visit: they don't change the score, but they can end a bid. */
+function documentFlags(details: BidDetails | undefined, now: Date): FitCriterion[] {
+  const out: FitCriterion[] = [];
+  const bonds = details?.bonds?.value;
+  if (bonds?.length) out.push({ key: "bonds", label: "Bonds required", level: "ok", detail: `${bonds.join(", ")}. Line up a surety before you bid.`, points: 0, max: 0 });
+  const visit = details?.siteVisit?.value;
+  if (visit?.date) {
+    const days = daysTo(visit.date, now);
+    const when = formatDate(`${visit.date}T12:00:00`, { year: undefined });
+    if (days < 0)
+      out.push(
+        visit.mandatory
+          ? { key: "visit", label: `Missed the required site visit (${when})`, level: "bad", detail: "Bidders had to attend. Ask the contracting officer whether there will be another.", points: 0, max: 0 }
+          : { key: "visit", label: `Site visit was ${when}`, level: "ok", detail: "It wasn't required, but read the attendee list and any answers posted after it.", points: 0, max: 0 },
+      );
+    else out.push({ key: "visit", label: `Site visit ${when}${visit.mandatory ? " (required)" : ""}`, level: visit.mandatory ? "ok" : "good", detail: "Go, or send your sub: you'll price it better.", points: 0, max: 0 });
+  }
+  return out;
+}
+
+export function fitScore(o: Opportunity, now: Date = new Date(), details?: BidDetails): FitScore {
   const criteria: FitCriterion[] = [];
 
   const service = serviceOf(o);
@@ -60,9 +92,12 @@ export function fitScore(o: Opportunity, now: Date = new Date()): FitScore {
         : { key: "service", label: "Service or product unclear", level: "ok", detail: "The notice doesn't say whether it's a service. Read the description.", points: 15, max: 30 },
   );
 
-  const n = o.attachments?.length;
+  const n = details?.documents.length ?? o.attachments?.length;
+  const size = sizeCriterion(details);
   criteria.push(
-    n == null
+    size
+      ? size
+      : n == null
       ? { key: "simple", label: "Attachments not listed", level: "ok", detail: `Open the notice on ${o.portal ?? "SAM.gov"} to see how big the package is.`, points: 10, max: 20 }
       : n <= 3
       ? { key: "simple", label: n === 0 ? "No attachments" : `${n} attachment${n === 1 ? "" : "s"}`, level: "good", detail: "Short package. You can understand the ask quickly.", points: 20, max: 20 }
@@ -99,7 +134,11 @@ export function fitScore(o: Opportunity, now: Date = new Date()): FitScore {
         : { key: "type", label: o.type || "Notice", level: "ok", detail: "Not a bid yet. Reply to get on the buyer's radar before it posts.", points: 5, max: 15 },
   );
 
+  criteria.push(...documentFlags(details, now));
+
   const score = criteria.reduce((s, c) => s + c.points, 0);
-  const verdict = score >= 75 ? "Strong fit" : score >= 50 ? "Worth a look" : "Hard pass";
+  // A $1M+ job is never a strong first sub-out bid, whatever else lines up.
+  const capped = size?.level === "bad" || criteria.some((c) => c.key === "visit" && c.level === "bad");
+  const verdict = score >= 75 && !capped ? "Strong fit" : score >= 50 ? "Worth a look" : "Hard pass";
   return { score, verdict, criteria };
 }

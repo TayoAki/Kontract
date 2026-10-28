@@ -28,6 +28,27 @@ function opportunityBlock(o: Opportunity, now: Date): string {
   return `<opportunity>\n${JSON.stringify(meta, null, 2)}\n</opportunity>\n\n<description>\n${description}\n</description>`;
 }
 
+/**
+ * What the attachments say, for drafts. Never the budget: a scope goes to
+ * subs, and a proposal should price the work, not echo the government's range.
+ */
+export function documentsBlock(deal: Deal, forSub: boolean): string {
+  const d = deal.details?.noticeId === deal.opportunity.id ? deal.details : undefined;
+  if (!d) return "";
+  const facts = {
+    sizes: d.sizes.map((x) => x.value),
+    scope: d.reading?.scope.map((x) => (x.quantity != null ? `${x.description}: ${x.quantity} ${x.unit ?? ""}`.trim() : x.description)),
+    tradesNeeded: d.reading?.trades,
+    requirements: d.requirements.map((x) => x.value),
+    howLong: d.period?.value,
+    siteVisit: d.siteVisit?.value.date ?? undefined,
+    prevailingWageDeterminations: d.wageDeterminations.length ? d.wageDeterminations : undefined,
+    ...(forSub ? {} : { bonds: d.bonds?.value, howTheyPick: d.evaluation?.value, formsToReturn: d.forms }),
+  };
+  const filled = Object.fromEntries(Object.entries(facts).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : v != null && v !== "")));
+  return Object.keys(filled).length ? `<from_the_bid_documents>\n${JSON.stringify(filled, null, 2)}\n</from_the_bid_documents>` : "";
+}
+
 function profileBlock(p: CompanyProfile): string {
   const fields = {
     companyName: p.companyName,
@@ -70,6 +91,8 @@ export function sowPrompt(deal: Deal, profile: CompanyProfile, now: Date = new D
 
 ${opportunityBlock(deal.opportunity, now)}
 
+${documentsBlock(deal, true)}
+
 ${linesBlock(deal)}
 
 ${profileBlock(profile)}
@@ -98,6 +121,8 @@ export function proposalPrompt(deal: Deal, profile: CompanyProfile, now: Date = 
   return `Write the quote/proposal I'll submit to the government for this solicitation.
 
 ${opportunityBlock(deal.opportunity, now)}
+
+${documentsBlock(deal, false)}
 
 ${profileBlock(profile)}
 

@@ -27,7 +27,7 @@ function fitTone(score: number) {
 }
 
 function Item({ o, deal, active, onClick }: { o: Opportunity; deal?: Deal; active: boolean; onClick: () => void }) {
-  const fit = fitScore(o);
+  const fit = fitScore(o, undefined, deal?.details?.noticeId === o.id ? deal.details : undefined);
   const days = daysUntil(o.responseDeadline);
   return (
     <button

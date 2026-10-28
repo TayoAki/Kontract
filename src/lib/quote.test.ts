@@ -118,3 +118,20 @@ test("needsImport: submitted and not imported since", () => {
   assert.equal(needsImport({ ...base, importedAt: "2026-10-28T09:00:00Z" }), true, "revised after import");
   assert.equal(needsImport({ ...base, response: null, submittedAt: null, status: "viewed" }), false);
 });
+
+test("facts from the bid documents reach the sub's scope, the budget never does", async () => {
+  const { extractBidDetails } = await import("./bid-details.ts");
+  const d = deal();
+  d.details = extractBidDetails(
+    d.opportunity.id,
+    [{ name: "RFQ.docx", text: "The magnitude of construction is between $1,000,000 and $2,000,000. Mow approximately 45,000 SF of turf. The period of performance is 365 calendar days after award. DBA Wage Determination No. TX20260012 applies. A site visit is scheduled on November 4, 2026." }],
+    [],
+    "fp",
+    now,
+  );
+  const snap = quoteSnapshot(d, d.subs[0]!, profile, now);
+  assert.match(snap.scope, /45,000 sq ft/);
+  assert.match(snap.scope, /365 calendar days/);
+  assert.match(snap.scope, /TX20260012/);
+  for (const leak of ["1,000,000", "2,000,000", "$1M", "$2M", "magnitude"]) assert.ok(!snap.scope.includes(leak), `leaked ${leak}`);
+});

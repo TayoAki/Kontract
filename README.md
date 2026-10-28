@@ -33,7 +33,7 @@ Needs Node 22.13 or newer (it uses the built-in `node:sqlite`). Open http://loca
 | Key | Unlocks | How to get it |
 |---|---|---|
 | — | Live opportunities and full descriptions: every active SAM.gov notice, from SAM.gov's free daily file | No key needed. The server downloads the file (~200 MB) at startup, keeps the ~7,000 notices that are still open, and re-checks hourly for a new one. |
-| `SAM_API_KEY` (optional) | Attachment links for a notice (the daily file doesn't include them) | Free. Sign in at sam.gov → Profile → Public API Key. Keys without a role allow about 10 requests a day; each notice you list costs one. |
+| `SAM_API_KEY` (optional) | A fallback for listing a notice's attachments | Not needed: attachments are listed and downloaded from SAM.gov's public endpoints. Free at sam.gov → Profile → Public API Key (about 10 requests a day without a role; keys expire every 90 days). |
 | `ANTHROPIC_API_KEY` | Claude's plain-English read of each notice, scopes of work, outreach emails/call scripts and proposals | platform.claude.com. Uses `claude-opus-5-5` by default (`ANTHROPIC_MODEL` to change). |
 | `GOOGLE_PLACES_API_KEY` *or* `APIFY_API_TOKEN` | Real local businesses (rating, reviews, phone, website) when you search for subcontractors | Google Places API (New), or Apify's `compass/crawler-google-places` actor (the same one the Agentic Workflows Google Maps pipeline uses). |
 | — | Past award pricing and past winners from USAspending.gov | No key needed. |
@@ -50,11 +50,23 @@ The layout follows the wireframe:
 |---|---|
 | **Left rail** | This week (weekly rhythm + pipeline), Find opportunities, Deadlines, My bids, Permit leads (with a link to Data sources), Sub bench, Settings, and your account. A subcontractor account has My leads, Quote requests, Find customers and Settings. |
 | **Sidebar** | Search every open SAM.gov notice and state/local bid (keyword across titles and descriptions, federal or state & local, state, NAICS, set-aside, posted date, time to respond, services only, open bids only), sorted by fit, deadline or newest, 100 at a time. Or switch to My bids filtered by stage. Each item shows days left and a fit score; state and local bids carry a badge. |
-| **Tabs** | **Overview**: what they're asking for in plain English, where, who can bid, requirements, red flags, questions for subs, the notice and attachments (or the state/local portal), and the contracting officer. **Past pricing**: similar past awards, the typical price per year, and the bid builder (sub cost → your price, per unit, per year, over the contract). **Subcontractors**: scope of work to send, local business search, companies that already won this work, **businesses pulling that trade's permits near the job**, subs from your bench who do this work in the state, and a shortlist with quotes, a six-point "hunger check", an email/call script and a **quote link** per company. **Proposal**: a pre-submit checklist, the proposal draft (edit, copy, download, print to PDF), and submitted/won/lost. |
+| **Tabs** | **Overview**: what the bid documents say (below), what they're asking for in plain English, where, who can bid, requirements, red flags, questions for subs, the notice, and the contracting officer. **Past pricing**: similar past awards, the typical price per year, and the bid builder (sub cost → your price, per unit, per year, over the contract). **Subcontractors**: scope of work to send, local business search, companies that already won this work, **businesses pulling that trade's permits near the job**, subs from your bench who do this work in the state, and a shortlist with quotes, a six-point "hunger check", an email/call script and a **quote link** per company. **Proposal**: a pre-submit checklist, the proposal draft (edit, copy, download, print to PDF), and submitted/won/lost. |
 | **Right sidebar** | Fit score with the reasons, your bid (sub cost, price, profit, margin), your price against past awards, and next steps. |
 | **Bottom bar** | Which data sources are live, today's focus, and bids due this week. |
 
 Anything you price, shortlist or draft is saved to **My bids** automatically. Press **Track** to save one without changing it.
+
+### From the bid documents
+
+When you open a SAM.gov notice, Kontract lists its attachments from SAM.gov (no key needed), downloads them, and reads Word, Excel, PowerPoint and PDF files on the server (nothing is stored but the facts). Rules pull out, each with the sentence and document it came from:
+
+- **Their budget**: the magnitude range construction bids must disclose (e.g. "between $1,000,000 and $2,000,000"), a stated estimate, or a not-to-exceed ceiling. On a form that lists every range, only a checked box counts.
+- **Bonds** (bid, performance, payment, and the bid guarantee %), the **site visit** (date, required or not, already passed), **when questions are due**, **how long the work runs**, **wage determinations**, **how they pick** (lowest price, best value, comparative analysis), **sizes** (sq ft, linear ft, acres), and **what the job requires** (asbestos, infection control, OSHA 10/30, background checks, licenses, warranties, working hours). Contract fine print and long checklists are skipped.
+- **Forms to fill in** and the rows of the **price form**.
+
+That's free and takes a few seconds (the 11 attachments on a VA roof job, including a 406-page spec book, read in about 5 seconds). The bid snapshot shows your price against their range, and the fit score marks a $1M+ job, required bonds and a missed site visit. Scanned PDFs (no text layer) are marked, not read.
+
+With `ANTHROPIC_API_KEY`, **Read the scope with Claude** (about $0.20 a bid, on request) lists the scope item by item with quantities, the trades needed, questions for your sub and risks. Every item must quote the words it came from, and items whose quote isn't in the documents are dropped. **Use as pricing lines** turns the scope into your price lines. The scope sent to subs (and the quote page) includes sizes, scope items, requirements and wage rates, never the budget.
 
 ### Quote links
 
@@ -69,8 +81,12 @@ Every building permit is someone about to spend money on a property. For a prime
 | **Sidebar** | Pick a state and a city or county (or all of them), how far back (today to 30 days), a trade, and how strong a signal (strong, likely, possible). Each trade shows how many leads it has. More filters: keyword, ZIP, minimum job value, residential only, and leads only. |
 | **Counting** | Leads are **unique addresses**, not rows: a new house with a building, electrical and plumbing permit is one lead with three related permits, tagged with the strongest reason for each trade. Cities with more than one feed (San Francisco's two permit systems, New York's DOB and electrical permits) are merged into one market. |
 | **Permit** | Address, type, job value, contractor (with license number and insurance date where the city publishes them) and owner, related permits at the same address, a link to the city's record, and **who this is a lead for**: each trade with the reason (a new pool needs a safety fence; a new roof is the time for gutters). |
+| **Names a contractor** | A filter for addresses where a permit names the contractor (someone to call, and a business to recruit), with the count. |
 | **Recruit** | Businesses already pulling that trade's permits in the city, plus a Google Maps search for that trade nearby. **Add to bench**, or send an **invite**: a message that leads with this permit, offers free weekly leads for their trade, and links to a sign-up page pre-filled with their trade and city. When they sign up, they land on your bench. |
-| **Right panel** | Leads by trade, your bench in that state, and each feed's health. |
+| **Pass it to a sub as a lead** | Pick a sub from your bench (or type a name and email) and add a note. They get a private link to a lead page: the address and map, why it's work for their trade, the permit's facts, and how to reach the customer. They answer "I'm on it" or "Not for me", and you see it on the permit. If they have an account with that email, the lead also shows under "Sent to you". |
+| **Right panel** | Leads by trade (click to filter), your bench in that state, and each feed's health. |
+
+**When a permit has no phone or email** (most don't), every lead comes with a reach plan built from what the permit does have: call the contractor running the job (or look up their number), mail the owner or "Current resident" at the address (a printable letter is built for you), knock or leave a door hanger on residential jobs, and check the city's record, which sometimes lists the applicant's phone when the data feed doesn't.
 
 ### Sub bench
 
@@ -82,7 +98,7 @@ A sub picks their trade and area at sign-up (or arrives from an invite with both
 
 | Area | What it does |
 |---|---|
-| **Leads** | Permits that mean work for their trade in their area. **Free: the 10 best each week** (scored by signal strength, job value and how recent; the picks stay fixed for the week). **Daily plan: every lead, every day.** Either can be limited to their ZIP codes. |
+| **Leads** | Tap a lead for the full detail and how to reach them (call, letter, map, city record). A filter shows only leads that name a contractor; leads a prime sent them are at the top. Permits that mean work for their trade in their area. **Free: the 10 best each week** (scored by signal strength, job value and how recent; the picks stay fixed for the week). **Daily plan: every lead, every day.** Either can be limited to their ZIP codes. |
 | **Quote requests** | Every quote link a prime has sent to their email, with its status. |
 | **Find customers** | The AI finder (below). |
 | **Settings** | Trade, area, ZIPs, website, plan and billing, and the email digest. |
@@ -132,7 +148,11 @@ src/components/      The UI
 | `GET /api/permits/contractors?state=TX&city=Austin&work=hvac,plumbing` | Businesses pulling permits for this work near a job (widens to the state when the city has none) |
 | `GET /api/permits/sources` | States, markets, permit and bid feeds with health, trades and kinds of work |
 | `POST /api/permits/check` | Re-pull every feed now and return fresh health |
+| `POST /api/opportunities/details` `{opportunity, claude?}` | Read a notice's attachments: budget, bonds, dates, requirements, forms (and Claude's scope reading with `claude: true`) |
 | `GET/PUT /api/crm`, `DELETE /api/crm/:id` | Your sub bench |
+| `GET/POST /api/leads/share` `{permit, trade, contactId? \| toName, toEmail?, note?}` | Leads you've passed to subs, and pass one |
+| `GET/POST /api/l/:token` `{answer: "taken"\|"passed"}` | The public lead page's data and the sub's answer (no session; the token is the key) |
+| `GET /api/sub/shared` | Leads primes passed to a sub's email |
 | `GET/POST /api/quotes` `{deal, subId}`, `POST /api/quotes/:token/imported` | Your quote links: list, make one, mark a quote as pulled into the bid |
 | `GET/POST /api/q/:token` | The public quote page's data and the sub's submission (no session; the token is the key) |
 | `GET/PUT /api/account` | Role (prime or sub), trade, area, ZIPs, website, digest setting |
