@@ -1,7 +1,7 @@
-import { fail, json, readBody } from "@/lib/http";
+import { fail, json, readBody, withUser } from "@/lib/http";
 import { findSubcontractors, PlacesError } from "@/lib/places";
 
-export async function POST(req: Request) {
+export const POST = withUser(async (req) => {
   const body = await readBody<{ query?: string; location?: string }>(req);
   if (!body?.query) return fail("Enter what kind of company you're looking for.");
   try {
@@ -11,4 +11,4 @@ export async function POST(req: Request) {
     console.error("subcontractor search failed", err);
     return fail("Business search failed. Try again.", 502);
   }
-}
+});

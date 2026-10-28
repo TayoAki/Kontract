@@ -1,11 +1,12 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { Download, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/format";
 import type { CompanyProfile } from "@/lib/types";
-import { useApp } from "./state";
-import { Badge, Button, Card, Input, Label, NumberInput, Section, TextArea } from "./ui";
+import { authClient } from "@/lib/auth-client";
+import { flushSaves, useApp } from "./state";
+import { Avatar, Badge, Button, Card, Input, Label, NumberInput, Section, TextArea } from "./ui";
 
 const FIELDS: { key: keyof CompanyProfile; label: string; hint?: string; placeholder?: string }[] = [
   { key: "companyName", label: "Company name", hint: "A broad name works for any kind of contract", placeholder: "Natalie Services LLC" },
@@ -56,8 +57,11 @@ export function SettingsView() {
   const saveProfile = useApp((s) => s.saveProfile);
   const say = useApp((s) => s.say);
   const deals = useApp((s) => s.deals);
+  const contacts = useApp((s) => s.contacts);
   const [form, setForm] = useState<CompanyProfile | null>(profile);
   const [busy, setBusy] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const user = useApp((s) => s.user);
   const [checking, setChecking] = useState(false);
   const refreshStatus = useApp((s) => s.refreshStatus);
 
@@ -89,6 +93,28 @@ export function SettingsView() {
           <h1 className="text-2xl font-semibold text-ink">Settings</h1>
           <p className="mt-1 text-[13px] text-ink-2">Your company details fill in every proposal and scope of work.</p>
         </header>
+
+        <Section title="Account">
+          <Card className="flex flex-wrap items-center gap-4 p-4">
+            <Avatar name={user?.name || user?.email || "You"} size={40} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-ink">{user?.name}</div>
+              <div className="truncate text-[13px] text-ink-2">{user?.email}</div>
+            </div>
+            <Button
+              busy={signingOut}
+              onClick={async () => {
+                setSigningOut(true);
+                await flushSaves();
+                await authClient.signOut();
+                window.location.reload();
+              }}
+            >
+              <LogOut className="size-4" /> Sign out
+            </Button>
+          </Card>
+          <p className="text-xs text-ink-3">Your bids, company profile and CRM are private to this account.</p>
+        </Section>
 
         <Section title="Company profile">
           <Card className="p-4">
@@ -186,10 +212,10 @@ export function SettingsView() {
           </Card>
         </Section>
 
-        <Section title="Your data" subtitle="Bids, quotes and drafts are saved on the server in .data/kontract.json.">
+        <Section title="Your data" subtitle="Bids, quotes, drafts and CRM contacts are saved on the server, under your account.">
           <Button
             onClick={() => {
-              const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), profile, deals: Object.values(deals) }, null, 2)], { type: "application/json" });
+              const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), profile, deals: Object.values(deals), contacts: Object.values(contacts) }, null, 2)], { type: "application/json" });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;

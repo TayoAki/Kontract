@@ -1,5 +1,5 @@
 import { explainClaudeError, hasClaude, streamDraft, type Effort } from "@/lib/claude";
-import { fail, readBody } from "@/lib/http";
+import { fail, readBody, withUser } from "@/lib/http";
 import { outreachPrompt, proposalPrompt, sowPrompt } from "@/lib/prompts";
 import { samDescription } from "@/lib/sam-bulk";
 import { getProfile } from "@/lib/store";
@@ -12,7 +12,7 @@ import type { Deal, DraftKind } from "@/lib/types";
 
 const EFFORT: Record<DraftKind, Effort> = { sow: "medium", outreach: "low", proposal: "high" };
 
-export async function POST(req: Request) {
+export const POST = withUser(async (req, user) => {
   const body = await readBody<{ kind?: DraftKind; deal?: Deal; subId?: string }>(req);
   const kind = body?.kind;
   const deal = body?.deal;
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   if (deal.opportunity.description === undefined && deal.opportunity.source === "bulk") {
     deal.opportunity.description = await samDescription(deal.opportunity.id);
   }
-  const profile = await getProfile();
+  const profile = await getProfile(user.id);
   const sub = body.subId ? deal.subs.find((s) => s.id === body.subId) : undefined;
   const encoder = new TextEncoder();
   const line = (e: unknown) => encoder.encode(`${JSON.stringify(e)}\n`);
@@ -54,4 +54,4 @@ export async function POST(req: Request) {
     },
   });
   return new Response(stream, { headers });
-}
+});

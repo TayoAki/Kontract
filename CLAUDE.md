@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Kontract helps a small business win government service contracts as the prime contractor: find opportunities, price them against past awards, line up a local subcontractor, and submit a proposal. It follows the same 3-layer setup as the Agentic Workflows template.
+Kontract helps a small business win government service contracts as the prime contractor: find opportunities, price them against past awards, line up a local subcontractor, and submit a proposal. It also turns daily building permits into leads to sell to local contractors (Permit leads) and tracks those contractors in a CRM. It follows the same 3-layer setup as the Agentic Workflows template.
 
 ## The 3 layers
 
@@ -12,10 +12,11 @@ Kontract helps a small business win government service contracts as the prime co
 | Check what the government paid before | `directives/research_past_pricing.md` |
 | Find, vet and get quotes from subcontractors | `directives/find_subcontractors.md` |
 | Price the bid and write the proposal | `directives/write_proposal.md` |
+| Permit leads and the CRM | No directive yet; see "Permit leads" and "CRM" in `README.md` |
 
 **2. Orchestration (you)**: read the directive, call the tools in order, handle errors, ask the user when a decision is theirs (which bid to pursue, which sub to pick, the final price).
 
-**3. Execution (deterministic tools)**: TypeScript in `src/lib/`, exposed over HTTP by `src/app/api/`. With the app running (`npm run dev`, port 3000), call the endpoints listed in `README.md` instead of re-implementing them. Use `curl`, not hand-written scraping.
+**3. Execution (deterministic tools)**: TypeScript in `src/lib/`, exposed over HTTP by `src/app/api/`. With the app running (`npm run dev`, port 3000), call the endpoints listed in `README.md` instead of re-implementing them. Use `curl`, not hand-written scraping. They need a session: sign in with `curl -c` first (see README) and pass the cookie jar.
 
 | Module | Does |
 |---|---|
@@ -28,7 +29,11 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/fit-score.ts`, `rules.ts` | Fit score and the no-AI breakdown |
 | `src/lib/bid-math.ts` | Sub cost, price, profit, margin, markup |
 | `src/lib/templates.ts` | Fill-in drafts when Claude isn't configured |
-| `src/lib/store.ts` | `.data/kontract.json` (deals, profile) and `.data/cache.json` (the SAM.gov index is `.data/sam-opportunities.jsonl`) |
+| `src/lib/permit-sources.ts`, `permit-normalize.ts`, `permit-trades.ts` | City/county permit feeds (Socrata), row → Permit, which trades a permit is a lead for |
+| `src/lib/permits.ts`, `permit-pitch.ts` | Fetch + cache permits per feed, contractors pulling them; the outreach pitch |
+| `src/lib/crm.ts` | CRM stages, logging touches, follow-ups, revenue summary |
+| `src/lib/auth.ts`, `db.ts` | Better Auth accounts (email + password) and the SQLite file `.data/kontract.db` |
+| `src/lib/store.ts` | Per-user records in SQLite (deals, profile, CRM contacts) and `.data/cache.json` (the SAM.gov index is `.data/sam-opportunities.jsonl`) |
 
 ## Operating principles
 
@@ -40,6 +45,6 @@ Kontract helps a small business win government service contracts as the prime co
 
 ## Files
 
-- `.data/`: the user's pipeline and caches. Never commit; safe to delete caches.
-- `.env.local`: API keys (`SAM_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_PLACES_API_KEY` / `APIFY_API_TOKEN`). Never commit.
+- `.data/`: accounts, each user's pipeline and CRM (`kontract.db`), and caches. Never commit; safe to delete caches, never `kontract.db`.
+- `.env.local`: API keys (`SAM_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_PLACES_API_KEY` / `APIFY_API_TOKEN`, `SOCRATA_APP_TOKEN`) and `BETTER_AUTH_SECRET`. Never commit.
 - Claude model defaults to `claude-opus-5-5` (`ANTHROPIC_MODEL` overrides).

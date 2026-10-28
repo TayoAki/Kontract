@@ -2,21 +2,49 @@
 
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { authClient, SIGNED_OUT_EVENT } from "@/lib/auth-client";
+import { AuthScreen } from "./AuthScreen";
 import { AlertsView } from "./AlertsView";
 import { BottomBar } from "./BottomBar";
+import { CrmView } from "./CrmView";
 import { HomeView } from "./HomeView";
 import { LeftRail } from "./LeftRail";
+import { PermitsView } from "./PermitsView";
 import { SettingsView } from "./SettingsView";
 import { useApp } from "./state";
 import { Workspace } from "./Workspace";
 
 export function App() {
+  const { data: session, isPending, refetch } = authClient.useSession();
+
+  // Any API call that comes back 401 means the session ended.
+  useEffect(() => {
+    const onSignedOut = () => void refetch();
+    window.addEventListener(SIGNED_OUT_EVENT, onSignedOut);
+    return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut);
+  }, [refetch]);
+
+  if (isPending && !session) {
+    return (
+      <div className="grid h-dvh place-items-center bg-bg">
+        <div className="grid size-10 animate-pulse place-items-center rounded-lg bg-accent text-base font-bold text-on-accent">K</div>
+      </div>
+    );
+  }
+  if (!session) return <AuthScreen onSignedIn={() => void refetch()} />;
+  // Keyed by user so nothing from a previous account survives a switch.
+  return <SignedInApp key={session.user.id} user={{ id: session.user.id, name: session.user.name, email: session.user.email }} />;
+}
+
+function SignedInApp({ user }: { user: { id: string; name: string; email: string } }) {
   const view = useApp((s) => s.view);
   const init = useApp((s) => s.init);
 
+  // Runs once per account (this component is keyed by user id).
   useEffect(() => {
+    useApp.getState().reset(user);
     void init();
-  }, [init]);
+  }, [init]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-dvh flex-col overflow-clip bg-bg text-ink">
@@ -25,6 +53,8 @@ export function App() {
         <main className="flex min-w-0 flex-1 overflow-clip">
           {view === "home" && <HomeView />}
           {(view === "search" || view === "bids") && <Workspace mode={view} />}
+          {view === "permits" && <PermitsView />}
+          {view === "crm" && <CrmView />}
           {view === "alerts" && <AlertsView />}
           {view === "settings" && <SettingsView />}
         </main>

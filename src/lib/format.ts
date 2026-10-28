@@ -33,6 +33,7 @@ export function money(n: number | null | undefined, opts: { compact?: boolean; c
       style: "currency",
       currency: "USD",
       notation: "compact",
+      minimumFractionDigits: 0,
       maximumFractionDigits: 1,
     }).format(n);
   }

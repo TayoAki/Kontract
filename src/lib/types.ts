@@ -237,3 +237,133 @@ export interface IntegrationStatus {
 }
 
 export type DraftKind = "sow" | "outreach" | "proposal";
+
+export type CrmStage = "prospect" | "contacted" | "trial" | "paying" | "lost";
+
+export interface CrmActivity {
+  id: string;
+  at: string;
+  kind: "call" | "email" | "text" | "meeting" | "note";
+  text: string;
+}
+
+/** A potential or paying client you're working, e.g. a contractor buying permit leads. */
+export interface CrmContact {
+  id: string;
+  company: string;
+  contactName?: string;
+  trade?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  address?: string;
+  /** Permit market they were found in, e.g. "austin-tx". */
+  market?: string;
+  source: "permits" | "places" | "manual";
+  stage: CrmStage;
+  /** What they pay (or would pay) per month. */
+  monthlyValue?: number;
+  /** YYYY-MM-DD */
+  nextFollowUp?: string;
+  notes?: string;
+  activities: CrmActivity[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---- Building permits ----
+
+export type TradeId =
+  | "fence"
+  | "landscaping"
+  | "pool"
+  | "patio"
+  | "gutters"
+  | "blinds"
+  | "roofing"
+  | "solar"
+  | "painting"
+  | "cleaning"
+  | "junk"
+  | "windows";
+
+export interface TradeTag {
+  trade: TradeId;
+  /** Why this permit means work for that trade. */
+  reason: string;
+}
+
+export interface Permit {
+  id: string;
+  sourceId: string;
+  number: string;
+  /** YYYY-MM-DD */
+  issuedDate: string;
+  type: string;
+  description: string;
+  /** Street address only. */
+  address: string;
+  city: string;
+  state: string;
+  zip?: string;
+  value?: number;
+  contractor?: string;
+  contractorPhone?: string;
+  owner?: string;
+  residential: boolean | null;
+  /** Official record when the city links one, otherwise the dataset. */
+  url: string;
+  trades: TradeTag[];
+}
+
+export interface PermitSourceInfo {
+  id: string;
+  name: string;
+  state: string;
+  kind: "city" | "county";
+  datasetUrl: string;
+}
+
+export interface PermitQuery {
+  state?: string;
+  /** One source, or all sources in the state when empty. */
+  source?: string;
+  days: number;
+  trade?: TradeId;
+  minValue?: number;
+  residentialOnly?: boolean;
+  q?: string;
+  zip?: string;
+  /** Only permits that mean work for at least one trade. */
+  leadsOnly?: boolean;
+}
+
+export interface PermitSourceResult {
+  id: string;
+  name: string;
+  count: number;
+  error?: string;
+}
+
+export interface PermitResults {
+  permits: Permit[];
+  total: number;
+  /** Permits per trade, before the trade filter. */
+  byTrade: Partial<Record<TradeId, number>>;
+  /** Permits issued in the window, before any filter. */
+  scanned: number;
+  sources: PermitSourceResult[];
+}
+
+/** A local business that has pulled permits in this market. */
+export interface PermitContractor {
+  /** Lowercased name with punctuation removed, for matching. */
+  key: string;
+  name: string;
+  phone?: string;
+  permits: number;
+  latest: string;
+  types: string[];
+}

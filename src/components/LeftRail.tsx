@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, FileText, Home, Search, Settings } from "lucide-react";
+import { Bell, ClipboardList, FileText, Home, Search, Settings, Users } from "lucide-react";
 import type { ComponentType } from "react";
 import { OPEN_STAGES } from "@/lib/deal";
 import { daysUntil } from "@/lib/format";
@@ -12,13 +12,15 @@ const ITEMS: { view: View; label: string; icon: ComponentType<{ className?: stri
   { view: "search", label: "Find opportunities", icon: Search },
   { view: "alerts", label: "Deadlines", icon: Bell },
   { view: "bids", label: "My bids", icon: FileText },
+  { view: "permits", label: "Permit leads", icon: ClipboardList },
+  { view: "crm", label: "CRM", icon: Users },
   { view: "settings", label: "Settings", icon: Settings },
 ];
 
 export function LeftRail() {
   const view = useApp((s) => s.view);
   const setView = useApp((s) => s.setView);
-  const company = useApp((s) => s.profile?.companyName);
+  const company = useApp((s) => s.profile?.companyName || s.user?.name || s.user?.email);
   const dueSoon = useApp(
     (s) =>
       Object.values(s.deals).filter((d) => {

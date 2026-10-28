@@ -1,10 +1,13 @@
 "use client";
 
 import { create } from "zustand";
+import { SIGNED_OUT_EVENT } from "@/lib/auth-client";
+import { findContact, newContact } from "@/lib/crm";
 import { newDeal } from "@/lib/deal";
 import type {
   Breakdown,
   CompanyProfile,
+  CrmContact,
   Deal,
   IntegrationStatus,
   Opportunity,
@@ -13,7 +16,7 @@ import type {
   PricingResults,
 } from "@/lib/types";
 
-export type View = "home" | "search" | "bids" | "alerts" | "settings";
+export type View = "home" | "search" | "bids" | "permits" | "crm" | "alerts" | "settings";
 export type Tab = "overview" | "pricing" | "subs" | "proposal";
 
 export const DEFAULT_FILTERS: OpportunitySearch = {
@@ -42,56 +45,78 @@ function searchParams(f: OpportunitySearch, offset: number): URLSearchParams {
   return params;
 }
 
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
+export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (res.status === 401 && typeof window !== "undefined") window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
   if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
   return body;
 }
 
-// Debounced saves, one timer per deal. Pending saves are flushed with
-// keepalive when the page is hidden or closed.
+// Debounced saves, one timer per record ("deal:<id>", "crm:<id>"). Pending
+// saves are flushed with keepalive when the page is hidden or closed.
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const pendingSaves = new Map<string, Deal>();
+const pendingSaves = new Map<string, { url: string; body: unknown }>();
 
-function sendDeal(deal: Deal, keepalive = false) {
-  pendingSaves.delete(deal.id);
-  return api("/api/deals", { method: "PUT", body: JSON.stringify(deal), keepalive });
+function send(key: string, keepalive = false) {
+  const p = pendingSaves.get(key);
+  pendingSaves.delete(key);
+  if (!p) return Promise.resolve();
+  return api(p.url, { method: "PUT", body: JSON.stringify(p.body), keepalive });
 }
 
-function persistDeal(deal: Deal) {
-  clearTimeout(saveTimers.get(deal.id));
-  pendingSaves.set(deal.id, deal);
+function schedule(key: string, url: string, body: unknown) {
+  clearTimeout(saveTimers.get(key));
+  pendingSaves.set(key, { url, body });
   saveTimers.set(
-    deal.id,
+    key,
     setTimeout(() => {
-      saveTimers.delete(deal.id);
-      sendDeal(deal).catch((err) => {
+      saveTimers.delete(key);
+      send(key).catch((err) => {
         useApp.setState({ toast: `Couldn't save: ${(err as Error).message}` });
       });
     }, 500),
   );
 }
 
-function cancelSave(id: string) {
-  clearTimeout(saveTimers.get(id));
-  saveTimers.delete(id);
-  pendingSaves.delete(id);
+function cancelSave(key: string) {
+  clearTimeout(saveTimers.get(key));
+  saveTimers.delete(key);
+  pendingSaves.delete(key);
 }
+
+/** Send every pending save now (before signing out). */
+export async function flushSaves(): Promise<void> {
+  const keys = [...pendingSaves.keys()];
+  for (const key of keys) clearTimeout(saveTimers.get(key));
+  await Promise.all(keys.map((key) => send(key).catch(() => undefined)));
+}
+
+const persistDeal = (deal: Deal) => schedule(`deal:${deal.id}`, "/api/deals", deal);
+const persistContact = (c: CrmContact) => schedule(`crm:${c.id}`, "/api/crm", c);
 
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => {
-    for (const deal of [...pendingSaves.values()]) {
-      cancelSave(deal.id);
-      void sendDeal(deal, true).catch(() => undefined);
+    for (const key of [...pendingSaves.keys()]) {
+      clearTimeout(saveTimers.get(key));
+      void send(key, true).catch(() => undefined);
     }
   });
 }
 
+export interface SignedInUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface AppState {
+  user: SignedInUser | null;
+  contacts: Record<string, CrmContact>;
+  crmSelectedId: string | null;
   view: View;
   tab: Tab;
   sidebarOpen: boolean;
@@ -116,6 +141,8 @@ interface AppState {
   pricing: Record<string, PricingResults>;
   toast: string | null;
 
+  /** Clear everything held in memory (on sign-in as a different account). */
+  reset(user: SignedInUser): void;
   init(): Promise<void>;
   setView(v: View): void;
   setTab(t: Tab): void;
@@ -133,10 +160,21 @@ interface AppState {
   setBreakdown(id: string, b: Breakdown, description?: string | null): void;
   setPricing(id: string, p: PricingResults): void;
   saveProfile(p: CompanyProfile): Promise<void>;
+  /** Create or change a CRM contact (saved automatically). */
+  upsertContact(c: CrmContact): void;
+  /** Add a company to the CRM, or return the one already there. */
+  addContact(fields: Partial<CrmContact> & { company: string }): { contact: CrmContact; existed: boolean };
+  selectContact(id: string | null): void;
+  removeContact(id: string): Promise<void>;
   say(msg: string | null): void;
 }
 
-export const useApp = create<AppState>((set, get) => ({
+type Data = Omit<AppState, { [K in keyof AppState]: AppState[K] extends (...args: never[]) => unknown ? K : never }[keyof AppState]>;
+
+const INITIAL: Data = {
+  user: null,
+  contacts: {},
+  crmSelectedId: null,
   view: "search",
   tab: "overview",
   sidebarOpen: false,
@@ -159,14 +197,30 @@ export const useApp = create<AppState>((set, get) => ({
   selectedId: null,
   pricing: {},
   toast: null,
+};
+
+export const useApp = create<AppState>((set, get) => ({
+  ...INITIAL,
+
+  reset(user) {
+    for (const key of [...saveTimers.keys()]) cancelSave(key);
+    set({ ...INITIAL, user });
+  },
 
   async init() {
-    const [status, profile, deals] = await Promise.all([
+    const [status, profile, deals, contacts] = await Promise.all([
       api<IntegrationStatus>("/api/status").catch(() => null),
       api<{ profile: CompanyProfile }>("/api/profile").then((r) => r.profile).catch(() => null),
       api<{ deals: Deal[] }>("/api/deals").then((r) => r.deals).catch(() => [] as Deal[]),
+      api<{ contacts: CrmContact[] }>("/api/crm").then((r) => r.contacts).catch(() => [] as CrmContact[]),
     ]);
-    set({ status, profile, deals: Object.fromEntries(deals.map((d) => [d.id, d])), loaded: true });
+    set({
+      status,
+      profile,
+      deals: Object.fromEntries(deals.map((d) => [d.id, d])),
+      contacts: Object.fromEntries(contacts.map((c) => [c.id, c])),
+      loaded: true,
+    });
     await get().search();
   },
 
@@ -266,7 +320,7 @@ export const useApp = create<AppState>((set, get) => ({
     const { deals, scratch } = get();
     const deal = deals[id];
     if (!deal) return;
-    cancelSave(id);
+    cancelSave(`deal:${id}`);
     const { [id]: _, ...rest } = deals;
     set({ deals: rest, scratch: { ...scratch, [id]: deal } });
     await api(`/api/deals/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
@@ -297,6 +351,31 @@ export const useApp = create<AppState>((set, get) => ({
   async saveProfile(p) {
     const r = await api<{ profile: CompanyProfile }>("/api/profile", { method: "PUT", body: JSON.stringify(p) });
     set({ profile: r.profile, toast: "Company profile saved" });
+  },
+
+  upsertContact(c) {
+    const next = { ...c, updatedAt: new Date().toISOString() };
+    set({ contacts: { ...get().contacts, [c.id]: next } });
+    persistContact(next);
+  },
+
+  addContact(fields) {
+    const existing = findContact(Object.values(get().contacts), fields.company);
+    if (existing) return { contact: existing, existed: true };
+    const contact = newContact(fields);
+    get().upsertContact(contact);
+    return { contact, existed: false };
+  },
+
+  selectContact(id) {
+    set({ crmSelectedId: id, sidebarOpen: false });
+  },
+
+  async removeContact(id) {
+    cancelSave(`crm:${id}`);
+    const { [id]: _, ...rest } = get().contacts;
+    set({ contacts: rest, crmSelectedId: get().crmSelectedId === id ? null : get().crmSelectedId });
+    await api(`/api/crm/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
   },
 
   say: (toast) => set({ toast }),

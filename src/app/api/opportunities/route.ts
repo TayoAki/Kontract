@@ -1,4 +1,4 @@
-import { fail, json } from "@/lib/http";
+import { fail, json, withUser } from "@/lib/http";
 import { searchSamOpportunities } from "@/lib/sam-bulk";
 import type { OpportunitySearch, OpportunitySort } from "@/lib/types";
 
@@ -8,7 +8,7 @@ const num = (v: string | null) => (v && /^\d+$/.test(v) ? Number(v) : undefined)
 const bool = (v: string | null) => v === "1" || v === "true";
 const SORTS: OpportunitySort[] = ["fit", "deadline", "newest"];
 
-export async function GET(req: Request) {
+export const GET = withUser(async (req) => {
   const p = new URL(req.url).searchParams;
   const sort = p.get("sort") as OpportunitySort | null;
   const search: OpportunitySearch = {
@@ -29,4 +29,4 @@ export async function GET(req: Request) {
     console.error("opportunity search failed", err);
     return fail("Search failed. Try again in a moment.", 500);
   }
-}
+});

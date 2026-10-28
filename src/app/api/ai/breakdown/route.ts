@@ -1,5 +1,5 @@
 import { claudeBreakdown, explainClaudeError, hasClaude, MODEL } from "@/lib/claude";
-import { fail, json, readBody } from "@/lib/http";
+import { fail, json, readBody, withUser } from "@/lib/http";
 import { rulesBreakdown } from "@/lib/rules";
 import { samDescription } from "@/lib/sam-bulk";
 import { cacheGet, cacheSet } from "@/lib/store";
@@ -7,7 +7,7 @@ import type { Breakdown, Opportunity } from "@/lib/types";
 
 const TTL = 30 * 24 * 60 * 60 * 1000;
 
-export async function POST(req: Request) {
+export const POST = withUser(async (req) => {
   const body = await readBody<{ opportunity?: Opportunity; refresh?: boolean }>(req);
   const o = body?.opportunity;
   if (!o?.id || !o.title) return fail("Missing opportunity");
@@ -31,4 +31,4 @@ export async function POST(req: Request) {
     console.error("breakdown failed", err);
     return fail(e.message, e.status);
   }
-}
+});

@@ -5,7 +5,7 @@ import { CsvParser, MixedDecoder } from "./csv";
 import { searchOpportunities } from "./opportunity-search";
 import { sampleOpportunities } from "./sample-data";
 import { closesOut, keepForSearch, mergeVersions, normalizeBulkRow, REQUIRED_COLUMNS, versionKey, type BulkRow } from "./sam-normalize";
-import { dataPath } from "./store";
+import { dataPath } from "./data-dir";
 import type { Opportunity, OpportunityResults, OpportunitySearch, SamDataStatus } from "./types";
 
 // SAM.gov publishes every active contract opportunity as one CSV each night

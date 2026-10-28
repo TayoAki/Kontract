@@ -1,18 +1,19 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { CompanyProfile, Deal } from "./types";
+import { dataPath } from "./data-dir";
+import { getDb } from "./db";
+import type { CompanyProfile, CrmContact, Deal } from "./types";
 
-// A tiny JSON-file database. One process owns the file, writes are serialized
-// and atomic (write to a temp file, then rename). Point DATA_DIR at a mounted
-// volume when you deploy.
+// Per-user records live in SQLite (see db.ts), always queried by user id so
+// one account never sees another's data. Shared, public data (API response
+// caches, the SAM.gov index) stays in plain files.
 
-const DATA_DIR = path.resolve(/*turbopackIgnore: true*/ process.env.DATA_DIR || ".data");
-const DB_FILE = path.join(DATA_DIR, "kontract.json");
+export { dataPath } from "./data-dir";
 
-/** Path of a file inside the data directory. */
-export const dataPath = (name: string) => path.join(DATA_DIR, name);
-const CACHE_FILE = path.join(DATA_DIR, "cache.json");
+const CACHE_FILE = dataPath("cache.json");
+/** The single-user file from before accounts existed. */
+const LEGACY_FILE = dataPath("kontract.json");
 
 export const EMPTY_PROFILE: CompanyProfile = {
   companyName: "",
@@ -28,9 +29,98 @@ export const EMPTY_PROFILE: CompanyProfile = {
   defaultMarkupPct: 35,
 };
 
-interface DB {
-  deals: Record<string, Deal>;
-  profile: CompanyProfile;
+type Kind = "deal" | "profile" | "crm";
+
+function listRecords<T>(userId: string, kind: Kind): T[] {
+  const rows = getDb()
+    .prepare("SELECT data FROM app_record WHERE user_id = ? AND kind = ? ORDER BY updated_at DESC")
+    .all(userId, kind) as { data: string }[];
+  return rows.map((r) => JSON.parse(r.data) as T);
+}
+
+function getRecord<T>(userId: string, kind: Kind, id: string): T | undefined {
+  const row = getDb().prepare("SELECT data FROM app_record WHERE user_id = ? AND kind = ? AND id = ?").get(userId, kind, id) as
+    | { data: string }
+    | undefined;
+  return row ? (JSON.parse(row.data) as T) : undefined;
+}
+
+function putRecord(userId: string, kind: Kind, id: string, data: unknown, updatedAt = new Date().toISOString()): void {
+  getDb()
+    .prepare(
+      `INSERT INTO app_record (user_id, kind, id, data, updated_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (user_id, kind, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+    )
+    .run(userId, kind, id, JSON.stringify(data), updatedAt);
+}
+
+function deleteRecord(userId: string, kind: Kind, id: string): void {
+  getDb().prepare("DELETE FROM app_record WHERE user_id = ? AND kind = ? AND id = ?").run(userId, kind, id);
+}
+
+// ---- Bids ----
+
+export async function listDeals(userId: string): Promise<Deal[]> {
+  return listRecords<Deal>(userId, "deal");
+}
+
+export async function saveDeal(userId: string, deal: Deal): Promise<Deal> {
+  putRecord(userId, "deal", deal.id, deal, deal.updatedAt);
+  return deal;
+}
+
+export async function deleteDeal(userId: string, id: string): Promise<void> {
+  deleteRecord(userId, "deal", id);
+}
+
+// ---- Company profile ----
+
+export async function getProfile(userId: string): Promise<CompanyProfile> {
+  return { ...EMPTY_PROFILE, ...getRecord<CompanyProfile>(userId, "profile", "me") };
+}
+
+export async function saveProfile(userId: string, profile: CompanyProfile): Promise<CompanyProfile> {
+  const next = { ...EMPTY_PROFILE, ...profile };
+  putRecord(userId, "profile", "me", next);
+  return next;
+}
+
+// ---- CRM ----
+
+export async function listContacts(userId: string): Promise<CrmContact[]> {
+  return listRecords<CrmContact>(userId, "crm");
+}
+
+export async function saveContact(userId: string, contact: CrmContact): Promise<CrmContact> {
+  putRecord(userId, "crm", contact.id, contact, contact.updatedAt);
+  return contact;
+}
+
+export async function deleteContact(userId: string, id: string): Promise<void> {
+  deleteRecord(userId, "crm", id);
+}
+
+// ---- One-time import of pre-accounts data ----
+
+/** Move bids and profile from the old single-user kontract.json into this account, once. */
+export async function importLegacyData(userId: string): Promise<boolean> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(LEGACY_FILE, "utf8");
+  } catch {
+    return false;
+  }
+  // Rename first so two sign-ups at once can't both claim it.
+  const claimed = path.join(path.dirname(LEGACY_FILE), `kontract.imported-${Date.now()}.json`);
+  try {
+    await fs.rename(LEGACY_FILE, claimed);
+  } catch {
+    return false;
+  }
+  const legacy = JSON.parse(raw) as { deals?: Record<string, Deal>; profile?: CompanyProfile };
+  for (const deal of Object.values(legacy.deals ?? {})) putRecord(userId, "deal", deal.id, deal, deal.updatedAt);
+  if (legacy.profile) putRecord(userId, "profile", "me", { ...EMPTY_PROFILE, ...legacy.profile });
+  return true;
 }
 
 let queue: Promise<unknown> = Promise.resolve();
@@ -52,48 +142,8 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 async function writeJson(file: string, data: unknown): Promise<void> {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2));
+  await fs.writeFile(tmp, JSON.stringify(data));
   await fs.rename(tmp, file);
-}
-
-async function readDB(): Promise<DB> {
-  const db = await readJson<Partial<DB>>(DB_FILE, {});
-  return { deals: db.deals ?? {}, profile: { ...EMPTY_PROFILE, ...db.profile } };
-}
-
-export async function listDeals(): Promise<Deal[]> {
-  const db = await readDB();
-  return Object.values(db.deals).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-}
-
-export function saveDeal(deal: Deal): Promise<Deal> {
-  return serialize(async () => {
-    const db = await readDB();
-    db.deals[deal.id] = deal;
-    await writeJson(DB_FILE, db);
-    return deal;
-  });
-}
-
-export function deleteDeal(id: string): Promise<void> {
-  return serialize(async () => {
-    const db = await readDB();
-    delete db.deals[id];
-    await writeJson(DB_FILE, db);
-  });
-}
-
-export async function getProfile(): Promise<CompanyProfile> {
-  return (await readDB()).profile;
-}
-
-export function saveProfile(profile: CompanyProfile): Promise<CompanyProfile> {
-  return serialize(async () => {
-    const db = await readDB();
-    db.profile = { ...EMPTY_PROFILE, ...profile };
-    await writeJson(DB_FILE, db);
-    return db.profile;
-  });
 }
 
 // ---- Response cache (SAM.gov rate limits are tight; USAspending is slow) ----

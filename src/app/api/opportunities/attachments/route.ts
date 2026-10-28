@@ -1,7 +1,7 @@
-import { fail, json, readBody } from "@/lib/http";
+import { fail, json, readBody, withUser } from "@/lib/http";
 import { fetchAttachments, SamError } from "@/lib/sam";
 
-export async function POST(req: Request) {
+export const POST = withUser(async (req) => {
   const body = await readBody<{ id?: string; postedDate?: string }>(req);
   if (!body?.id || !body.postedDate) return fail("Missing notice id or posted date");
   try {
@@ -11,4 +11,4 @@ export async function POST(req: Request) {
     console.error("attachment lookup failed", err);
     return fail("Couldn't reach SAM.gov. Try again in a moment.", 502);
   }
-}
+});
