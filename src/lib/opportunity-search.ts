@@ -1,7 +1,8 @@
-import { fitScore, isBiddable, isServiceCode } from "./fit-score.ts";
+import { fitScore, isBiddable, serviceOf } from "./fit-score.ts";
 import type { Opportunity, OpportunitySearch } from "./types.ts";
 
-// Search over notices held locally (the SAM.gov daily file, or samples).
+// Search over notices held locally: the SAM.gov daily file (or samples) plus
+// state and local bids.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -9,6 +10,8 @@ export interface SearchPage {
   results: Opportunity[];
   total: number;
   offset: number;
+  /** Matches that are state and local bids. */
+  sledTotal: number;
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -38,14 +41,16 @@ export function searchOpportunities(
     const deadline = o.responseDeadline ? Date.parse(o.responseDeadline) : null;
     if (deadline != null && deadline < t) return false; // closed
     if (s.biddableOnly && !isBiddable(o.type)) return false;
-    if (s.servicesOnly && isServiceCode(o.pscCode) === false) return false;
+    if (s.servicesOnly && serviceOf(o) === false) return false;
+    if (s.level === "federal" && o.source === "sled") return false;
+    if (s.level === "sled" && o.source !== "sled") return false;
     if (minDeadline != null && (deadline == null || deadline < minDeadline)) return false;
     if (postedAfter != null && Date.parse(o.postedDate) < postedAfter) return false;
     if (s.state && o.placeOfPerformance.state !== s.state) return false;
     if (s.naics && !o.naicsCode?.startsWith(s.naics)) return false;
     if (s.setAside && o.setAsideCode !== s.setAside) return false;
     if (words.length) {
-      const head = `${o.title} ${o.agency} ${o.office} ${o.solicitationNumber} ${o.naicsCode ?? ""} ${o.pscCode ?? ""} ${o.placeOfPerformance.city ?? ""}`;
+      const head = `${o.title} ${o.agency} ${o.office} ${o.solicitationNumber} ${o.naicsCode ?? ""} ${o.pscCode ?? ""} ${o.placeOfPerformance.city ?? ""} ${o.portal ?? ""}`;
       for (const re of words) if (!re.test(head) && !re.test(describe(o) ?? "")) return false;
     }
     return true;
@@ -62,5 +67,5 @@ export function searchOpportunities(
 
   const offset = Math.max(0, opts.offset ?? 0);
   const limit = Math.max(1, opts.limit ?? 100);
-  return { results: matches.slice(offset, offset + limit), total: matches.length, offset };
+  return { results: matches.slice(offset, offset + limit), total: matches.length, offset, sledTotal: matches.filter((o) => o.source === "sled").length };
 }

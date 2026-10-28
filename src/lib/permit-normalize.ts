@@ -1,6 +1,6 @@
-import { isResidential, isTradeWork, tagTrades } from "./permit-trades.ts";
+import { isResidential, isTradeWork, strengthRank, tagTrades } from "./permit-trades.ts";
 import type { PermitSource } from "./permit-sources.ts";
-import type { Permit, PermitContractor, PermitQuery, PermitResults, TradeId } from "./types.ts";
+import type { Permit, PermitContractor, PermitQuery, PermitResults, TradeId, TradeTag, WorkId } from "./types.ts";
 
 // Pure helpers: build the SoQL query for a source, turn its rows into
 // Permits, and filter/summarize them.
@@ -89,18 +89,25 @@ function chicagoContacts(row: Row, n: number): { contractor?: string; owner?: st
   return { contractor, owner };
 }
 
-/** "Paradisa Homes, LLC***MAIN***" → "Paradisa Homes, LLC" (Austin marks a firm's main account). */
+/** "Paradisa Homes, LLC***MAIN***" → "Paradisa Homes, LLC" (Austin and SF append account notes after asterisks). */
 const businessName = (name: string) =>
   name
-    .replace(/\s*(\*+\s*main\s*\**|\(main\))\s*$/i, "")
+    .replace(/\s*\(main\)\s*$/i, "")
+    .replace(/\s*\*{2,}.*$/, "")
     .replace(/\*+/g, "")
     .trim();
+
+/** A contractor name as shown: placeholders ("Owner", "N/A") dropped, notes stripped, shouting fixed. */
+export function contractorName(raw: unknown): string | undefined {
+  const name = businessName(clean(raw));
+  return name && !EMPTY.test(name) ? titleCase(name) : undefined;
+}
 
 export function normalizePermit(s: PermitSource, row: Row): Permit | null {
   const m = s.map;
   const issuedDate = permitDate(row[s.date], s.dateFormat);
   if (!issuedDate) return null;
-  const type = [...new Set(m.type.map((f) => titleCase(clean(row[f]))).filter(Boolean))].join(" · ");
+  const type = [...new Set([m.typePrefix ?? "", ...m.type.map((f) => titleCase(clean(row[f])))].filter(Boolean))].join(" · ");
   const description = m.description.map((f) => clean(row[f])).find(Boolean) ?? "";
   const rawAddress = m.address.map((f) => text(row[f])).filter(Boolean).join(" ");
   const address = titleCase(rawAddress.split(",")[0]!.replace(/\s+/g, " ").trim());
@@ -117,6 +124,7 @@ export function normalizePermit(s: PermitSource, row: Row): Permit | null {
   return {
     id: `${s.id}:${number || `${issuedDate}:${address}:${description.slice(0, 40)}`}`,
     sourceId: s.id,
+    market: s.market,
     number,
     issuedDate,
     type,
@@ -126,8 +134,10 @@ export function normalizePermit(s: PermitSource, row: Row): Permit | null {
     state: s.state,
     zip,
     value,
-    contractor: businessName(contractor) ? titleCase(businessName(contractor)) : undefined,
+    contractor: contractorName(contractor),
     contractorPhone: m.contractorPhone ? clean(row[m.contractorPhone]) || undefined : undefined,
+    contractorLicense: m.contractorLicense ? clean(row[m.contractorLicense]) || undefined : undefined,
+    insuredUntil: m.insuredUntil ? (permitDate(row[m.insuredUntil]) ?? undefined) : undefined,
     owner: owner ? titleCase(owner) : undefined,
     residential,
     url: /^https?:\/\//.test(link) ? link : s.datasetUrl,
@@ -135,48 +145,95 @@ export function normalizePermit(s: PermitSource, row: Row): Permit | null {
   };
 }
 
-/** Apply the user's filters and count permits per trade (before the trade filter). */
+/** "1755 N. Forest Ave." and "1755 N FOREST AVE" are the same place. */
+export const addressKey = (p: Pick<Permit, "market" | "address" | "zip" | "city">) =>
+  `${p.market}|${p.address.toLowerCase().replace(/[^a-z0-9]/g, "")}|${p.zip ?? p.city.toLowerCase()}`;
+
+/** Several permits at one address are one lead: keep the richest as the lead and list the rest. */
+export function groupByAddress(permits: Permit[]): Permit[] {
+  const groups = new Map<string, Permit[]>();
+  for (const p of permits) {
+    const key = p.address ? addressKey(p) : p.id;
+    const g = groups.get(key);
+    if (g) g.push(p);
+    else groups.set(key, [p]);
+  }
+  return [...groups.values()].map((g) => {
+    if (g.length === 1) return g[0]!;
+    const [lead, ...rest] = [...g].sort(
+      (a, b) => b.trades.length - a.trades.length || (b.value ?? 0) - (a.value ?? 0) || b.issuedDate.localeCompare(a.issuedDate),
+    ) as [Permit, ...Permit[]];
+    const trades = new Map<TradeId, TradeTag>(lead.trades.map((t) => [t.trade, t]));
+    for (const p of rest)
+      for (const t of p.trades) {
+        const had = trades.get(t.trade);
+        if (!had || strengthRank(t.strength) > strengthRank(had.strength)) trades.set(t.trade, t);
+      }
+    return {
+      ...lead,
+      value: Math.max(...g.map((p) => p.value ?? 0)) || undefined,
+      contractor: lead.contractor ?? rest.find((p) => p.contractor)?.contractor,
+      issuedDate: g.reduce((d, p) => (p.issuedDate > d ? p.issuedDate : d), lead.issuedDate),
+      trades: [...trades.values()],
+      related: rest.map(({ id, number, type, issuedDate, url }) => ({ id, number, type, issuedDate, url })),
+    };
+  });
+}
+
+/** Apply the user's filters, group by address, and count leads per trade (before the trade filter). */
 export function filterPermits(all: Permit[], q: PermitQuery): Omit<PermitResults, "sources"> {
   const words = (q.q ?? "").toLowerCase().split(/\s+/).filter((w) => w.length >= 2);
-  const base = all.filter((p) => {
-    if (q.residentialOnly && p.residential === false) return false;
-    if (q.minValue && (p.value ?? 0) < q.minValue) return false;
-    if (q.zip && p.zip !== q.zip) return false;
-    if (q.leadsOnly && p.trades.length === 0) return false;
-    if (words.length) {
-      const hay = `${p.type} ${p.description} ${p.address} ${p.city} ${p.contractor ?? ""} ${p.zip ?? ""}`.toLowerCase();
-      if (!words.every((w) => hay.includes(w))) return false;
-    }
-    return true;
-  });
+  const minRank = q.minStrength ? strengthRank(q.minStrength) : 0;
+  const base = groupByAddress(
+    all.filter((p) => {
+      if (q.residentialOnly && p.residential === false) return false;
+      if (q.minValue && (p.value ?? 0) < q.minValue) return false;
+      if (q.zip && p.zip !== q.zip) return false;
+      if (words.length) {
+        const hay = `${p.type} ${p.description} ${p.address} ${p.city} ${p.contractor ?? ""} ${p.zip ?? ""}`.toLowerCase();
+        if (!words.every((w) => hay.includes(w))) return false;
+      }
+      return true;
+    }),
+  )
+    .map((p) => (minRank ? { ...p, trades: p.trades.filter((t) => strengthRank(t.strength) >= minRank) } : p))
+    .filter((p) => !q.leadsOnly || p.trades.length > 0);
   const byTrade: Partial<Record<TradeId, number>> = {};
   for (const p of base) for (const t of p.trades) byTrade[t.trade] = (byTrade[t.trade] ?? 0) + 1;
   const permits = (q.trade ? base.filter((p) => p.trades.some((t) => t.trade === q.trade)) : base).sort(
     (a, b) => b.issuedDate.localeCompare(a.issuedDate) || (b.value ?? 0) - (a.value ?? 0),
   );
-  return { permits, total: permits.length, byTrade, scanned: all.length };
+  return { permits, total: permits.length, byTrade, scanned: all.length, addresses: base.length };
 }
 
 export const contractorKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /**
- * Businesses pulling permits in this market, busiest first. With a trade, only
- * permits that are that trade's own work count (pool permits → pool builders).
+ * Businesses pulling permits in this market, busiest first. With a kind of
+ * work, only permits that are that work count (pool permits → pool builders,
+ * mechanical permits → HVAC contractors).
  */
-export function permitContractors(permits: Permit[], trade?: TradeId): PermitContractor[] {
-  const map = new Map<string, PermitContractor>();
+export function permitContractors(permits: Permit[], work?: WorkId): PermitContractor[] {
+  const map = new Map<string, PermitContractor & { addresses: Set<string> }>();
   for (const p of permits) {
     if (!p.contractor) continue;
-    if (trade && !isTradeWork(trade, p.type, p.description)) continue;
+    if (work && !isTradeWork(work, p.type, p.description)) continue;
     const key = contractorKey(p.contractor);
     if (!key) continue;
-    const c = map.get(key) ?? { key, name: p.contractor, phone: p.contractorPhone, permits: 0, latest: p.issuedDate, types: [] };
+    const c =
+      map.get(key) ??
+      { key, name: p.contractor, phone: p.contractorPhone, permits: 0, jobs: 0, latest: p.issuedDate, types: [], market: p.market, addresses: new Set<string>() };
     c.permits += 1;
+    c.addresses.add(p.address ? addressKey(p) : p.id);
     c.phone ??= p.contractorPhone;
+    c.license ??= p.contractorLicense;
+    if (p.insuredUntil && (!c.insuredUntil || p.insuredUntil > c.insuredUntil)) c.insuredUntil = p.insuredUntil;
     if (p.issuedDate > c.latest) c.latest = p.issuedDate;
     const type = p.type.split(" · ")[0];
     if (type && !c.types.includes(type) && c.types.length < 3) c.types.push(type);
     map.set(key, c);
   }
-  return [...map.values()].sort((a, b) => b.permits - a.permits || b.latest.localeCompare(a.latest));
+  return [...map.values()]
+    .map(({ addresses, ...c }) => ({ ...c, jobs: addresses.size }))
+    .sort((a, b) => b.jobs - a.jobs || b.permits - a.permits || b.latest.localeCompare(a.latest));
 }

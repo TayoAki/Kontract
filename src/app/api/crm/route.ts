@@ -4,7 +4,7 @@ import type { CrmContact, CrmStage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const STAGES: CrmStage[] = ["prospect", "contacted", "trial", "paying", "lost"];
+const STAGES: CrmStage[] = ["found", "contacted", "quoted", "active", "not-a-fit"];
 
 export const GET = withUser(async (_req, user) => json({ contacts: await listContacts(user.id) }));
 

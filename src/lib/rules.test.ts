@@ -22,6 +22,13 @@ test("category keywords for pricing and sub search", () => {
   for (const k of awardKeywords({ title: "A B", description: "" })) assert.ok(k.length > 0);
 });
 
+test("categories match whole words, not pieces of other words", () => {
+  const steam = { title: "NTX Steam Trap Monitoring", description: "It is important to report through the portal. Transportation provided. Removing old traps." };
+  assert.equal(subSearchTerms(steam)[0], "commercial HVAC contractor");
+  assert.equal(subSearchTerms({ title: "Porta-John Rental", description: "" })[0], "portable toilet rental");
+  assert.notEqual(subSearchTerms({ title: "Debris Removal", description: "Removing debris weekly." })[0], "moving company");
+});
+
 test("guessPeriods reads base + option years", () => {
   assert.deepEqual(guessPeriods("a base year plus four (4) one-year option periods"), { periods: 5, label: "1 base year + 4 option years" });
   assert.deepEqual(guessPeriods("One base year and 2 option years."), { periods: 3, label: "1 base year + 2 option years" });

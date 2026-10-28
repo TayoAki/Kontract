@@ -3,9 +3,9 @@
 import { ChevronDown, ChevronRight, ClipboardList, Loader2, PanelLeft, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { money } from "@/lib/format";
-import type { Permit } from "@/lib/types";
+import type { Permit, SignalStrength } from "@/lib/types";
 import { PermitDetail } from "./PermitDetail";
-import { relDay, useTradeLabel } from "./PermitMarket";
+import { relDay, STRENGTH_LABEL, useTradeLabel } from "./PermitMarket";
 import { DEFAULT_PERMIT_QUERY, usePermits, useSelectedPermit } from "./permits-state";
 import { useApp } from "./state";
 import { Badge, Button, Chip, cx, Empty, ErrorNote, Input, Label, Select, Toggle } from "./ui";
@@ -14,7 +14,7 @@ const DAYS = [1, 3, 7, 14, 30];
 
 function PermitItem({ p, active, onClick }: { p: Permit; active: boolean; onClick: () => void }) {
   const label = useTradeLabel();
-  const shown = p.trades.slice(0, 3);
+  const shown = [...p.trades].sort((a, b) => (a.strength === "strong" ? -1 : 0) - (b.strength === "strong" ? -1 : 0)).slice(0, 3);
   return (
     <button
       type="button"
@@ -34,11 +34,12 @@ function PermitItem({ p, active, onClick }: { p: Permit; active: boolean; onClic
       <div className="mt-1.5 flex flex-wrap gap-1">
         <Badge>{relDay(p.issuedDate)}</Badge>
         {shown.map((t) => (
-          <Badge key={t.trade} tone="accent">
+          <Badge key={t.trade} tone={t.strength === "strong" ? "good" : "accent"} title={`${STRENGTH_LABEL[t.strength]}: ${t.reason}`}>
             {label(t.trade)}
           </Badge>
         ))}
         {p.trades.length > shown.length && <Badge>+{p.trades.length - shown.length}</Badge>}
+        {p.related?.length ? <Badge title="Other permits at this address">{p.related.length + 1} permits</Badge> : null}
       </div>
     </button>
   );
@@ -54,10 +55,11 @@ function PermitList() {
   const selectedId = usePermits((s) => s.selectedId);
   const select = usePermits((s) => s.select);
   const setSidebarOpen = useApp((s) => s.setSidebarOpen);
+  const setView = useApp((s) => s.setView);
   const [more, setMore] = useState(false);
   const [keyword, setKeyword] = useState(query.q ?? "");
   const [zip, setZip] = useState(query.zip ?? "");
-  const cities = useMemo(() => meta?.sources.filter((s) => s.state === query.state) ?? [], [meta, query.state]);
+  const cities = useMemo(() => meta?.markets.filter((m) => m.state === query.state) ?? [], [meta, query.state]);
   const byTrade = results?.byTrade ?? {};
   const trades = useMemo(() => [...(meta?.trades ?? [])].sort((a, b) => (byTrade[b.id] ?? 0) - (byTrade[a.id] ?? 0)), [meta, byTrade]);
 
@@ -77,7 +79,7 @@ function PermitList() {
           </label>
           <label>
             <Label>City or county</Label>
-            <Select value={query.source ?? ""} onChange={(e) => setQuery({ source: e.target.value || undefined })} aria-label="City or county">
+            <Select value={query.market ?? ""} onChange={(e) => setQuery({ market: e.target.value || undefined })} aria-label="City or county">
               <option value="">{cities.length > 1 ? `All ${cities.length}` : "All"}</option>
               {cities.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -121,7 +123,7 @@ function PermitList() {
           className="flex h-8 w-full items-center justify-between rounded-lg bg-panel-2 px-2.5 text-xs text-ink-2 hover:text-ink"
         >
           <span className="truncate">
-            {[query.leadsOnly ? "Leads only" : "All permits", query.residentialOnly && "Residential", query.minValue && `${money(query.minValue, { compact: true })}+`, query.zip, query.q && `“${query.q}”`]
+            {[query.leadsOnly ? "Leads only" : "All permits", query.minStrength && `${STRENGTH_LABEL[query.minStrength]}+`, query.residentialOnly && "Residential", query.minValue && `${money(query.minValue, { compact: true })}+`, query.zip, query.q && `“${query.q}”`]
               .filter(Boolean)
               .join(" · ")}
           </span>
@@ -156,6 +158,14 @@ function PermitList() {
                 </Select>
               </label>
             </div>
+            <label className="block">
+              <Label hint="How sure the trade tag is">Lead strength</Label>
+              <Select value={query.minStrength ?? ""} onChange={(e) => setQuery({ minStrength: (e.target.value || undefined) as SignalStrength | undefined })}>
+                <option value="">Any</option>
+                <option value="likely">Likely or strong</option>
+                <option value="strong">Strong only (a new pool needs a fence, a new roof means gutters)</option>
+              </Select>
+            </label>
             <div className="flex flex-col gap-2">
               <Toggle checked={Boolean(query.leadsOnly)} onChange={(v) => setQuery({ leadsOnly: v })}>
                 Only permits that mean work for a trade
@@ -171,7 +181,7 @@ function PermitList() {
                 onClick={() => {
                   setKeyword("");
                   setZip("");
-                  setQuery({ ...DEFAULT_PERMIT_QUERY, state: query.state, source: query.source, days: query.days, trade: query.trade, q: undefined, zip: undefined, minValue: undefined });
+                  setQuery({ ...DEFAULT_PERMIT_QUERY, state: query.state, market: query.market, days: query.days, trade: query.trade, q: undefined, zip: undefined, minValue: undefined, minStrength: undefined });
                 }}
               >
                 Reset
@@ -185,7 +195,7 @@ function PermitList() {
         <div className="text-xs text-ink-2" aria-live="polite">
           {loading || !results
             ? "Loading permits…"
-            : `${results.total.toLocaleString()} ${query.leadsOnly ? "lead" : "permit"}${results.total === 1 ? "" : "s"}${query.leadsOnly ? ` from ${results.scanned.toLocaleString()} permits` : ""}`}
+            : `${results.total.toLocaleString()} ${query.leadsOnly ? "lead" : "address"}${results.total === 1 ? "" : query.leadsOnly ? "s" : "es"} from ${results.scanned.toLocaleString()} permits`}
         </div>
       </div>
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
@@ -222,7 +232,9 @@ function PermitList() {
           </p>
         )}
       </div>
-      <div className="border-t border-line px-3 py-2 text-[11px] text-ink-3">City and county open data · refreshed hourly</div>
+      <button type="button" onClick={() => setView("sources")} className="border-t border-line px-3 py-2 text-left text-[11px] text-ink-3 hover:text-ink">
+        City and county open data · checked every 6 hours · <span className="text-accent">Data sources</span>
+      </button>
     </div>
   );
 }
@@ -267,7 +279,7 @@ export function PermitsView() {
         ) : (
           <div className="grid flex-1 place-items-center p-6">
             <Empty icon={<ClipboardList className="size-8" />} title={hasResults ? "Pick a permit" : "Loading permits"}>
-              Every permit is a homeowner or builder about to spend money. Open one to see which trades it&apos;s a lead for and who to sell it to.
+              Every permit is a homeowner or builder about to spend money, and the businesses pulling permits are the local subs you want on your bench. Open one to see who it&apos;s a lead for and who to recruit.
             </Empty>
           </div>
         )}

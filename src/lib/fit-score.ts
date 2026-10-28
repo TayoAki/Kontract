@@ -31,6 +31,11 @@ export function isServiceCode(psc: string | null | undefined): boolean | null {
   return /[A-Za-z]/.test(c);
 }
 
+/** Service or product: from the product/service code, else what a state or local feed says. */
+export function serviceOf(o: Pick<Opportunity, "pscCode" | "serviceKind">): boolean | null {
+  return isServiceCode(o.pscCode) ?? (o.serviceKind ? o.serviceKind !== "product" : null);
+}
+
 const SMALL_BUSINESS_SET_ASIDES = /small business|8\(a\)|8a|hubzone|service-disabled|sdvosb|women-owned|wosb|veteran|isbee|indian/i;
 
 export function isSmallBusinessSetAside(o: Pick<Opportunity, "setAside" | "setAsideCode">): boolean {
@@ -46,19 +51,19 @@ export function isBiddable(type: string): boolean {
 export function fitScore(o: Opportunity, now: Date = new Date()): FitScore {
   const criteria: FitCriterion[] = [];
 
-  const service = isServiceCode(o.pscCode);
+  const service = serviceOf(o);
   criteria.push(
     service === true
       ? { key: "service", label: "Service, not a product", level: "good", detail: "A local provider can do the work and wait for net-30 payment.", points: 30, max: 30 }
       : service === false
         ? { key: "service", label: "This is a product buy", level: "bad", detail: "Products mean manufacturers, shipping, approved countries and certifications.", points: 0, max: 30 }
-        : { key: "service", label: "Service or product unclear", level: "ok", detail: "No product/service code on the notice. Read the description.", points: 15, max: 30 },
+        : { key: "service", label: "Service or product unclear", level: "ok", detail: "The notice doesn't say whether it's a service. Read the description.", points: 15, max: 30 },
   );
 
   const n = o.attachments?.length;
   criteria.push(
     n == null
-      ? { key: "simple", label: "Attachments not listed", level: "ok", detail: "Open the notice on SAM.gov to see how big the package is.", points: 10, max: 20 }
+      ? { key: "simple", label: "Attachments not listed", level: "ok", detail: `Open the notice on ${o.portal ?? "SAM.gov"} to see how big the package is.`, points: 10, max: 20 }
       : n <= 3
       ? { key: "simple", label: n === 0 ? "No attachments" : `${n} attachment${n === 1 ? "" : "s"}`, level: "good", detail: "Short package. You can understand the ask quickly.", points: 20, max: 20 }
       : n <= 9

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isResidential, isTradeWork, tagTrades } from "./permit-trades.ts";
+import { isResidential, isTradeWork, tagTrades, workForJob } from "./permit-trades.ts";
 
 const trades = (type: string, desc: string, res: boolean | null = true) => tagTrades(type, desc, res).map((t) => t.trade).sort();
 
@@ -58,8 +58,30 @@ test("residential-only rules skip commercial permits", () => {
   assert.deepEqual(trades("Addition", "Office addition", false), []);
 });
 
-test("every tag explains itself", () => {
-  for (const t of tagTrades("New · Single Family/Duplex", "new house", true)) assert.ok(t.reason.length > 10);
+test("every tag explains itself and says how sure it is", () => {
+  for (const t of tagTrades("New · Single Family/Duplex", "new house", true)) {
+    assert.ok(t.reason.length > 10);
+    assert.ok(["strong", "likely", "possible"].includes(t.strength));
+  }
+  const pool = Object.fromEntries(tagTrades("Building Permit · Pool", "New in-ground pool", true).map((t) => [t.trade, t.strength]));
+  assert.deepEqual(pool, { fence: "strong", patio: "strong", landscaping: "likely" });
+});
+
+test("trade permits name HVAC, electrical and plumbing contractors", () => {
+  assert.equal(isTradeWork("hvac", "Mechanical Permit · Remodel", "Replace furnace"), true);
+  assert.equal(isTradeWork("electrical", "Electrical permit · New Job Filing", "Rewire"), true);
+  assert.equal(isTradeWork("plumbing", "Plumbing Permit", "Water heater"), true);
+  assert.equal(isTradeWork("hvac", "Plumbing Permit", "Water heater"), false);
+  assert.equal(isTradeWork("general", "Building Permit · New", "New single family residence"), true, "home builders are general contractors");
+  assert.equal(isTradeWork("general", "Electrical Permit", "New service"), false);
+});
+
+test("workForJob maps a government job to the subs it needs", () => {
+  assert.deepEqual(workForJob({ naicsCode: "561730", title: "Grounds Maintenance Services" }), ["landscaping"]);
+  assert.deepEqual(workForJob({ naicsCode: "238220", title: "HVAC Preventive Maintenance" }), ["hvac", "plumbing"]);
+  assert.deepEqual(workForJob({ naicsCode: "236220", title: "Renovate Building 12 restrooms" }), ["general"]);
+  assert.deepEqual(workForJob({ naicsCode: null, title: "Replace chain link fencing", terms: ["fence contractor"] }), ["fence"]);
+  assert.deepEqual(workForJob({ naicsCode: "561720", title: "Janitorial Services" }), [], "permits don't help with janitorial");
 });
 
 test("isResidential", () => {

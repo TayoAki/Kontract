@@ -2,9 +2,11 @@
 
 import { create } from "zustand";
 import { SIGNED_OUT_EVENT } from "@/lib/auth-client";
-import { findContact, newContact } from "@/lib/crm";
+import { findContact, newContact, recordQuote } from "@/lib/crm";
+import { applyQuote, needsImport, type QuoteRequest } from "@/lib/quote";
 import { newDeal } from "@/lib/deal";
 import type {
+  Account,
   Breakdown,
   CompanyProfile,
   CrmContact,
@@ -16,7 +18,7 @@ import type {
   PricingResults,
 } from "@/lib/types";
 
-export type View = "home" | "search" | "bids" | "permits" | "crm" | "alerts" | "settings";
+export type View = "home" | "search" | "bids" | "permits" | "crm" | "alerts" | "settings" | "sources" | "leads" | "quotes" | "prospects";
 export type Tab = "overview" | "pricing" | "subs" | "proposal";
 
 export const DEFAULT_FILTERS: OpportunitySearch = {
@@ -29,6 +31,7 @@ export const DEFAULT_FILTERS: OpportunitySearch = {
   servicesOnly: true,
   biddableOnly: true,
   sort: "fit",
+  level: "",
 };
 
 const PAGE_SIZE = 100;
@@ -115,8 +118,11 @@ export interface SignedInUser {
 
 interface AppState {
   user: SignedInUser | null;
+  account: Account | null;
   contacts: Record<string, CrmContact>;
   crmSelectedId: string | null;
+  /** Quote links you've sent, by token. */
+  quoteRequests: Record<string, QuoteRequest>;
   view: View;
   tab: Tab;
   sidebarOpen: boolean;
@@ -133,6 +139,7 @@ interface AppState {
   resultsSource: OpportunityResults["source"] | null;
   resultsAsOf: string | null;
   resultsNotice: string | null;
+  resultsSled: number;
   searching: boolean;
   loadingMore: boolean;
   searchError: string | null;
@@ -165,6 +172,11 @@ interface AppState {
   /** Add a company to the CRM, or return the one already there. */
   addContact(fields: Partial<CrmContact> & { company: string }): { contact: CrmContact; existed: boolean };
   selectContact(id: string | null): void;
+  /** Make (or refresh) the quote link for a sub on a bid. */
+  requestQuote(dealId: string, subId: string): Promise<QuoteRequest>;
+  /** Fetch quote links and put any newly submitted quotes into their bids. */
+  syncQuotes(): Promise<void>;
+  saveAccount(patch: Partial<Account> & { invitedBy?: string }): Promise<Account>;
   removeContact(id: string): Promise<void>;
   say(msg: string | null): void;
 }
@@ -173,8 +185,10 @@ type Data = Omit<AppState, { [K in keyof AppState]: AppState[K] extends (...args
 
 const INITIAL: Data = {
   user: null,
+  account: null,
   contacts: {},
   crmSelectedId: null,
+  quoteRequests: {},
   view: "search",
   tab: "overview",
   sidebarOpen: false,
@@ -190,6 +204,7 @@ const INITIAL: Data = {
   resultsSource: null,
   resultsAsOf: null,
   resultsNotice: null,
+  resultsSled: 0,
   searching: false,
   loadingMore: false,
   searchError: null,
@@ -208,20 +223,62 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async init() {
-    const [status, profile, deals, contacts] = await Promise.all([
+    const [account, status, profile, deals, contacts] = await Promise.all([
+      api<{ account: Account }>("/api/account").then((r) => r.account).catch(() => null),
       api<IntegrationStatus>("/api/status").catch(() => null),
       api<{ profile: CompanyProfile }>("/api/profile").then((r) => r.profile).catch(() => null),
       api<{ deals: Deal[] }>("/api/deals").then((r) => r.deals).catch(() => [] as Deal[]),
       api<{ contacts: CrmContact[] }>("/api/crm").then((r) => r.contacts).catch(() => [] as CrmContact[]),
     ]);
     set({
+      account,
+      // Subcontractors start on their leads; primes on search.
+      ...(account?.role === "sub" ? { view: "leads" as View } : {}),
       status,
       profile,
       deals: Object.fromEntries(deals.map((d) => [d.id, d])),
       contacts: Object.fromEntries(contacts.map((c) => [c.id, c])),
       loaded: true,
     });
-    await get().search();
+    if (account?.role !== "sub") await Promise.all([get().search(), get().syncQuotes()]);
+  },
+
+  async saveAccount(patch) {
+    const { account } = await api<{ account: Account }>("/api/account", { method: "PUT", body: JSON.stringify(patch) });
+    set({ account, ...(patch.role && patch.role !== get().account?.role ? { view: patch.role === "sub" ? "leads" : "search" } : {}) });
+    return account;
+  },
+
+  async requestQuote(dealId, subId) {
+    const { deals, scratch } = get();
+    if (!deals[dealId]) get().track(dealId);
+    const deal = get().deals[dealId] ?? scratch[dealId];
+    if (!deal) throw new Error("Open the bid first.");
+    const { request } = await api<{ request: QuoteRequest }>("/api/quotes", { method: "POST", body: JSON.stringify({ deal, subId }) });
+    set({ quoteRequests: { ...get().quoteRequests, [request.token]: request } });
+    get().updateDeal(dealId, (d) => ({
+      ...d,
+      stage: d.stage === "found" ? "sourcing" : d.stage,
+      subs: d.subs.map((s) => (s.id === subId ? { ...s, quoteToken: request.token, status: s.status === "new" ? "contacted" : s.status } : s)),
+    }));
+    return request;
+  },
+
+  async syncQuotes() {
+    const r = await api<{ requests: QuoteRequest[] }>("/api/quotes").catch(() => null);
+    if (!r) return;
+    set({ quoteRequests: Object.fromEntries(r.requests.map((q) => [q.token, q])) });
+    const markup = get().profile?.defaultMarkupPct ?? 35;
+    for (const q of r.requests.filter(needsImport)) {
+      const deal = get().deals[q.dealId];
+      if (!deal || !deal.subs.some((s) => s.id === q.subId)) continue;
+      get().updateDeal(q.dealId, (d) => applyQuote(d, q.subId, q.response!, markup));
+      const sub = get().deals[q.dealId]!.subs.find((s) => s.id === q.subId)!;
+      const contact = (sub.crmId && get().contacts[sub.crmId]) || findContact(Object.values(get().contacts), sub.name);
+      if (contact) get().upsertContact(recordQuote(contact, deal.opportunity.title, q.response!.total));
+      await api(`/api/quotes/${encodeURIComponent(q.token)}/imported`, { method: "POST" }).catch(() => undefined);
+      set({ toast: `${q.subName} sent a quote: $${Math.round(q.response!.total).toLocaleString("en-US")} for "${deal.opportunity.title.slice(0, 50)}"` });
+    }
   },
 
   setView(view) {
@@ -255,6 +312,7 @@ export const useApp = create<AppState>((set, get) => ({
         resultsSource: r.source,
         resultsAsOf: r.dataAsOf ?? null,
         resultsNotice: r.notice ?? null,
+        resultsSled: r.sledTotal ?? 0,
         searching: false,
       });
       const { selectedId, view } = get();

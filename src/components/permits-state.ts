@@ -1,17 +1,20 @@
 "use client";
 
 import { create } from "zustand";
-import type { Trade } from "@/lib/permit-trades";
-import type { Permit, PermitContractor, PermitQuery, PermitResults, PermitSourceInfo, TradeId } from "@/lib/types";
+import type { Trade, Work } from "@/lib/permit-trades";
+import type { BidFeedInfo, FeedHealth, Permit, PermitContractor, PermitFeedInfo, PermitMarketInfo, PermitQuery, PermitResults, WorkId } from "@/lib/types";
 import { api } from "./state";
 
 export interface PermitMeta {
-  states: { code: string; name: string; sources: number }[];
-  sources: PermitSourceInfo[];
+  states: { code: string; name: string; markets: number }[];
+  markets: PermitMarketInfo[];
+  feeds: (PermitFeedInfo & { health: FeedHealth })[];
+  bidFeeds: (BidFeedInfo & { health: FeedHealth })[];
   trades: Trade[];
+  work: Work[];
 }
 
-type Results = PermitResults & { contractors: PermitContractor[]; tradeContractors: Partial<Record<TradeId, PermitContractor[]>> };
+type Results = PermitResults & { contractors: PermitContractor[]; tradeContractors: Partial<Record<WorkId, PermitContractor[]>> };
 
 export const DEFAULT_PERMIT_QUERY: PermitQuery = { state: "TX", days: 7, leadsOnly: true };
 
@@ -22,31 +25,28 @@ interface PermitsState {
   loading: boolean;
   error: string | null;
   selectedId: string | null;
-  /** The trade you're selling leads to (drives clients and the pitch). */
-  pitchTrade: TradeId | null;
-  /** Monthly price and refund window used in the pitch and revenue math. */
-  price: number;
-  guaranteeDays: number;
+  /** The trade you're recruiting subs for (drives the contractor list and the invite). */
+  pitchTrade: WorkId | null;
 
-  loadMeta(): Promise<void>;
+  loadMeta(force?: boolean): Promise<void>;
   setQuery(patch: Partial<PermitQuery>, run?: boolean): void;
   search(): Promise<void>;
   select(id: string | null): void;
-  setPitchTrade(t: TradeId | null): void;
-  setOffer(patch: { price?: number; guaranteeDays?: number }): void;
+  setPitchTrade(t: WorkId | null): void;
 }
 
 let seq = 0;
 
-function params(q: PermitQuery): string {
+export function permitParams(q: PermitQuery): string {
   const p = new URLSearchParams();
-  if (q.source) p.set("source", q.source);
+  if (q.market) p.set("market", q.market);
   else if (q.state) p.set("state", q.state);
   p.set("days", String(q.days));
   if (q.trade) p.set("trade", q.trade);
   if (q.minValue) p.set("minValue", String(q.minValue));
   if (q.residentialOnly) p.set("residentialOnly", "1");
   if (q.leadsOnly) p.set("leadsOnly", "1");
+  if (q.minStrength) p.set("minStrength", q.minStrength);
   if (q.zip) p.set("zip", q.zip);
   if (q.q) p.set("q", q.q);
   return p.toString();
@@ -60,11 +60,9 @@ export const usePermits = create<PermitsState>((set, get) => ({
   error: null,
   selectedId: null,
   pitchTrade: null,
-  price: 99,
-  guaranteeDays: 30,
 
-  async loadMeta() {
-    if (get().meta) return;
+  async loadMeta(force = false) {
+    if (get().meta && !force) return;
     try {
       set({ meta: await api<PermitMeta>("/api/permits/sources") });
     } catch (err) {
@@ -75,7 +73,7 @@ export const usePermits = create<PermitsState>((set, get) => ({
   setQuery(patch, run = true) {
     const query = { ...get().query, ...patch };
     // A city belongs to one state; changing the state clears it.
-    if (patch.state !== undefined && patch.state !== get().query.state) query.source = undefined;
+    if (patch.state !== undefined && patch.state !== get().query.state && patch.market === undefined) query.market = undefined;
     set({ query, ...(patch.trade !== undefined ? { pitchTrade: patch.trade ?? null } : {}) });
     if (run) void get().search();
   },
@@ -84,7 +82,7 @@ export const usePermits = create<PermitsState>((set, get) => ({
     const mine = ++seq;
     set({ loading: true, error: null });
     try {
-      const results = await api<Results>(`/api/permits?${params(get().query)}`);
+      const results = await api<Results>(`/api/permits?${permitParams(get().query)}`);
       if (mine !== seq) return;
       const { selectedId } = get();
       const wide = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
@@ -99,16 +97,15 @@ export const usePermits = create<PermitsState>((set, get) => ({
     set({ selectedId: id });
   },
   setPitchTrade: (pitchTrade) => set({ pitchTrade }),
-  setOffer: (patch) => set(patch),
 }));
 
 export function useSelectedPermit(): Permit | null {
   return usePermits((s) => (s.selectedId ? (s.results?.permits.find((p) => p.id === s.selectedId) ?? null) : null));
 }
 
-/** "Austin, TX" for one city, or "Texas" for the whole state. */
+/** "Austin" for one city, or "Texas" for the whole state. */
 export function marketName(q: PermitQuery, meta: PermitMeta | null): string {
-  const source = q.source ? meta?.sources.find((s) => s.id === q.source) : undefined;
-  if (source) return source.name.replace(/\s*\(.*\)$/, "");
+  const market = q.market ? meta?.markets.find((m) => m.id === q.market) : undefined;
+  if (market) return market.name.replace(/\s*\(.*\)$/, "");
   return meta?.states.find((s) => s.code === q.state)?.name ?? q.state ?? "your area";
 }

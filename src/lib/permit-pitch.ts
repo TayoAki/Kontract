@@ -1,13 +1,13 @@
 import { money } from "./format.ts";
-import { tradeById } from "./permit-trades.ts";
-import type { CompanyProfile, Permit, TradeId } from "./types.ts";
+import { TRADES, workById } from "./permit-trades.ts";
+import type { CompanyProfile, Permit, TradeId, WorkId } from "./types.ts";
 
-// The outreach message for selling permit alerts to a contractor: lead with a
-// real permit from their area, offer tomorrow's list free, then a monthly
-// price with a no-questions refund.
+// The message that invites a local contractor onto your subcontractor bench:
+// free permit leads for their trade every week, plus your jobs to quote. Lead
+// with a real permit from their area when there is one.
 
-export interface PitchOptions {
-  trade: TradeId;
+export interface InviteOptions {
+  work: WorkId;
   marketName: string;
   /** A recent permit that means work for this trade. */
   permit?: Permit;
@@ -16,14 +16,16 @@ export interface PitchOptions {
   /** The business you're writing to. */
   company?: string;
   profile?: Partial<CompanyProfile>;
-  price: number;
-  guaranteeDays: number;
+  /** Where they sign up. */
+  joinUrl: string;
+  freePerWeek: number;
+  dailyPrice: number;
   now?: Date;
 }
 
 const or = (v: string | undefined, placeholder: string) => (v && v.trim() ? v.trim() : `[${placeholder}]`);
 
-function greeting(o: PitchOptions): string {
+function greeting(o: Pick<InviteOptions, "contactName" | "company">): string {
   if (o.contactName?.trim()) return o.contactName.trim().split(/\s+/)[0]!;
   const company = o.company?.trim().replace(/,?\s+(llc|l\.l\.c\.|inc|co|corp|ltd|pllc)\.?$/i, "");
   if (company) return `${company} team`;
@@ -37,7 +39,8 @@ function whichList(issued: string, now: Date): string {
   return days <= 2 ? "Yesterday's list" : days <= 8 ? "This week's list" : "A recent list";
 }
 
-function hookFor(p: Permit, reason: string | undefined, now: Date): string {
+function hookFor(p: Permit, trade: TradeId, now: Date): string {
+  const reason = p.trades.find((t) => t.trade === trade)?.reason;
   const kind = (p.type.split(" · ")[0] || "building").replace(/\s*permits?$/i, "").toLowerCase() || "building";
   const what = `${p.value ? `${money(p.value, { compact: true })} ` : ""}${kind}`;
   let desc = p.description.replace(/[.\s]+$/, "");
@@ -47,22 +50,26 @@ function hookFor(p: Permit, reason: string | undefined, now: Date): string {
   return `${whichList(p.issuedDate, now)} had this one: ${article(what)} ${what} permit at ${p.address}${p.zip ? ` (${p.zip})` : ""}${snippet}.${reason ? ` ${reason}` : ""}`;
 }
 
-export function permitPitch(o: PitchOptions): { subject: string; body: string } {
-  const trade = tradeById(o.trade);
-  const p = o.permit;
-  const reason = p?.trades.find((t) => t.trade === o.trade)?.reason;
+const isTrade = (w: WorkId): w is TradeId => TRADES.some((t) => t.id === w);
+
+export function subInvite(o: InviteOptions): { subject: string; body: string } {
+  const work = workById(o.work);
   const name = or(o.profile?.contactName, "your name");
   const company = or(o.profile?.companyName, "your company");
-  const hook = p ? hookFor(p, reason, o.now ?? new Date()) : `Every day the city posts new permits that mean work for ${trade.plural}.`;
+  const noun = isTrade(o.work) ? TRADES.find((t) => t.id === o.work)!.noun : work.label.toLowerCase();
+  const leads = isTrade(o.work)
+    ? `\n1. ${o.freePerWeek} new ${noun} leads a week from building permits in ${o.marketName}, free.${o.permit ? ` ${hookFor(o.permit, o.work as TradeId, o.now ?? new Date())}` : ""}\n2. Our jobs to quote. When we have ${noun} work, you get the scope and quote it online in a few minutes. No bidding fees.`
+    : `\nWhen we have ${noun} work, you get the scope and quote it online in a few minutes. No bidding fees.`;
+  const upsell = isTrade(o.work) ? `\n\nWant every new permit the morning it's filed? That's ${money(o.dailyPrice)}/month, cancel anytime.` : "";
   const body = `Hi ${greeting(o)},
 
-I'm ${name} with ${company}. Every morning I send ${trade.plural} in ${o.marketName} the new building permits that mean work for them, before anyone else calls.
+I'm ${name} with ${company}. We win commercial and government service contracts around ${o.marketName} and hire local ${work.plural} to do the work.
+${leads}
 
-${hook}
-
-Want tomorrow's list for your area free, no card? After that it's ${money(o.price)}/month, and if you don't land a job from the list in ${o.guaranteeDays} days, I'll refund it in full. No questions asked.
+Join here: ${o.joinUrl}${upsell}
 
 ${name}
 ${or(o.profile?.phone, "phone")}`;
-  return { subject: `New ${trade.noun} leads in ${o.marketName}, every morning`, body };
+  const subject = isTrade(o.work) ? `Free ${noun} leads in ${o.marketName}, plus jobs to quote` : `${work.label} work to quote in ${o.marketName}`;
+  return { subject, body };
 }

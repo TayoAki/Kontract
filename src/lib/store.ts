@@ -2,8 +2,9 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { dataPath } from "./data-dir";
+import { migrateContact } from "./crm";
 import { getDb } from "./db";
-import type { CompanyProfile, CrmContact, Deal } from "./types";
+import type { Account, CompanyProfile, CrmContact, Deal, Prospect, ProspectRun } from "./types";
 
 // Per-user records live in SQLite (see db.ts), always queried by user id so
 // one account never sees another's data. Shared, public data (API response
@@ -29,7 +30,7 @@ export const EMPTY_PROFILE: CompanyProfile = {
   defaultMarkupPct: 35,
 };
 
-type Kind = "deal" | "profile" | "crm";
+type Kind = "deal" | "profile" | "crm" | "account" | "prospect" | "prospect-run";
 
 function listRecords<T>(userId: string, kind: Kind): T[] {
   const rows = getDb()
@@ -64,6 +65,10 @@ export async function listDeals(userId: string): Promise<Deal[]> {
   return listRecords<Deal>(userId, "deal");
 }
 
+export async function getDeal(userId: string, id: string): Promise<Deal | null> {
+  return getRecord<Deal>(userId, "deal", id) ?? null;
+}
+
 export async function saveDeal(userId: string, deal: Deal): Promise<Deal> {
   putRecord(userId, "deal", deal.id, deal, deal.updatedAt);
   return deal;
@@ -88,7 +93,12 @@ export async function saveProfile(userId: string, profile: CompanyProfile): Prom
 // ---- CRM ----
 
 export async function listContacts(userId: string): Promise<CrmContact[]> {
-  return listRecords<CrmContact>(userId, "crm");
+  return listRecords<CrmContact>(userId, "crm").map(migrateContact);
+}
+
+export async function getContact(userId: string, id: string): Promise<CrmContact | null> {
+  const c = getRecord<CrmContact>(userId, "crm", id);
+  return c ? migrateContact(c) : null;
 }
 
 export async function saveContact(userId: string, contact: CrmContact): Promise<CrmContact> {
@@ -192,3 +202,59 @@ export async function cached<T>(key: string, ttlMs: number, load: () => Promise<
   await cacheSet(key, value, ttlMs);
   return value;
 }
+
+// ---- Accounts (prime or subcontractor) ----
+
+export function defaultAccount(now = new Date().toISOString()): Account {
+  return { role: "prime", plan: "free", digest: true, createdAt: now, updatedAt: now };
+}
+
+export async function getAccount(userId: string): Promise<Account> {
+  return { ...defaultAccount(), ...getRecord<Account>(userId, "account", "me") };
+}
+
+export async function saveAccount(userId: string, account: Account): Promise<Account> {
+  const next = { ...account, updatedAt: new Date().toISOString() };
+  putRecord(userId, "account", "me", next, next.updatedAt);
+  return next;
+}
+
+/** Every saved account (for the digest job and Stripe webhooks). */
+export function listAccounts(): { userId: string; account: Account }[] {
+  const rows = getDb().prepare("SELECT user_id, data FROM app_record WHERE kind = 'account'").all() as { user_id: string; data: string }[];
+  return rows.map((r) => ({ userId: r.user_id, account: { ...defaultAccount(), ...(JSON.parse(r.data) as Account) } }));
+}
+
+/** A signed-up user's email and name (Better Auth's user table). */
+export function userInfo(userId: string): { id: string; email: string; name: string } | null {
+  try {
+    return (getDb().prepare('SELECT id, email, name FROM "user" WHERE id = ?').get(userId) as { id: string; email: string; name: string } | undefined) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ---- Prospects (AI customer finder) ----
+
+export async function listProspects(userId: string): Promise<Prospect[]> {
+  return listRecords<Prospect>(userId, "prospect");
+}
+
+export async function getProspect(userId: string, id: string): Promise<Prospect | null> {
+  return getRecord<Prospect>(userId, "prospect", id) ?? null;
+}
+
+export async function saveProspect(userId: string, p: Prospect): Promise<Prospect> {
+  putRecord(userId, "prospect", p.id, p);
+  return p;
+}
+
+export async function getLastRun(userId: string): Promise<ProspectRun | null> {
+  return getRecord<ProspectRun>(userId, "prospect-run", "last") ?? null;
+}
+
+export async function saveRun(userId: string, run: ProspectRun): Promise<ProspectRun> {
+  putRecord(userId, "prospect-run", "last", run);
+  return run;
+}
+

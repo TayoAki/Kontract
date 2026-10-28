@@ -100,7 +100,7 @@ function DescriptionBlock({ deal }: { deal: Deal }) {
     );
   }
   if (!o.description) {
-    return <p className="text-[13px] text-ink-2">This notice has no written description. The details are in its attachments on SAM.gov.</p>;
+    return <p className="text-[13px] text-ink-2">This notice has no written description. The details are in its attachments on {o.portal ?? "SAM.gov"}.</p>;
   }
   const long = o.description.length > 900;
   return (
@@ -146,7 +146,7 @@ function Attachments({ deal }: { deal: Deal }) {
 
   const samLink = (
     <a href={o.samUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline">
-      See attachments on SAM.gov <ExternalLink className="size-3.5" />
+      See {o.source === "sled" ? "documents" : "attachments"} on {o.portal ?? "SAM.gov"} <ExternalLink className="size-3.5" />
     </a>
   );
 
@@ -154,7 +154,7 @@ function Attachments({ deal }: { deal: Deal }) {
     return (
       <div className="flex flex-wrap items-center gap-3">
         {error && <ErrorNote>{error}</ErrorNote>}
-        {hasKey && (
+        {hasKey && o.source !== "sled" && (
           <Button size="sm" onClick={() => void load()} busy={busy}>
             <FileDown className="size-3.5" /> List attachments
           </Button>
@@ -224,7 +224,7 @@ export function OverviewTab({ deal }: { deal: Deal }) {
               rel="noreferrer"
               className="inline-flex h-7 items-center gap-1 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
             >
-              SAM.gov <ExternalLink className="size-3.5" />
+              {o.portal ?? "SAM.gov"} <ExternalLink className="size-3.5" />
             </a>
           </div>
         </div>

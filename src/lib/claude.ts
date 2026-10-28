@@ -10,12 +10,12 @@ export const MODEL = process.env.ANTHROPIC_MODEL?.trim() || "claude-opus-5-5";
 export const hasClaude = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
 let client: Anthropic | null = null;
-const getClient = () => (client ??= new Anthropic());
+export const getClient = () => (client ??= new Anthropic());
 
 // If a request is declined by a safety classifier, let the API re-run it on
 // Anthropic's recommended fallback model instead of returning a refusal.
 const supportsFallback = /^claude-(opus-5|fable-5|sonnet-5-5)/.test(MODEL);
-const fallback = () =>
+export const fallback = () =>
   supportsFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {};
 
 export type Effort = "low" | "medium" | "high";

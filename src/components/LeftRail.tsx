@@ -1,24 +1,34 @@
 "use client";
 
-import { Bell, ClipboardList, FileText, Home, Search, Settings, Users } from "lucide-react";
+import { Bell, ClipboardList, FileSignature, FileText, Home, Search, Settings, Sparkles, Users } from "lucide-react";
 import type { ComponentType } from "react";
 import { OPEN_STAGES } from "@/lib/deal";
 import { daysUntil } from "@/lib/format";
 import { useApp, type View } from "./state";
 import { Avatar, cx } from "./ui";
 
-const ITEMS: { view: View; label: string; icon: ComponentType<{ className?: string }> }[] = [
+type Item = { view: View; label: string; icon: ComponentType<{ className?: string }> };
+
+const SUB_ITEMS: Item[] = [
+  { view: "leads", label: "My leads", icon: ClipboardList },
+  { view: "quotes", label: "Quote requests", icon: FileSignature },
+  { view: "prospects", label: "Find customers", icon: Sparkles },
+  { view: "settings", label: "Settings", icon: Settings },
+];
+
+const ITEMS: Item[] = [
   { view: "home", label: "This week", icon: Home },
   { view: "search", label: "Find opportunities", icon: Search },
   { view: "alerts", label: "Deadlines", icon: Bell },
   { view: "bids", label: "My bids", icon: FileText },
   { view: "permits", label: "Permit leads", icon: ClipboardList },
-  { view: "crm", label: "CRM", icon: Users },
+  { view: "crm", label: "Sub bench", icon: Users },
   { view: "settings", label: "Settings", icon: Settings },
 ];
 
 export function LeftRail() {
   const view = useApp((s) => s.view);
+  const isSub = useApp((s) => s.account?.role === "sub");
   const setView = useApp((s) => s.setView);
   const company = useApp((s) => s.profile?.companyName || s.user?.name || s.user?.email);
   const dueSoon = useApp(
@@ -34,7 +44,7 @@ export function LeftRail() {
       <div className="mb-3 grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent" aria-label="Kontract">
         K
       </div>
-      {ITEMS.map(({ view: v, label, icon: Icon }) => {
+      {(isSub ? SUB_ITEMS : ITEMS).map(({ view: v, label, icon: Icon }) => {
         const active = view === v;
         return (
           <button

@@ -25,6 +25,18 @@ export function BottomBar() {
       }).length,
   );
   const focus = todaysFocus();
+  const account = useApp((s) => s.account);
+
+  if (account?.role === "sub") {
+    const plans = status?.subPlans;
+    return (
+      <footer className="flex h-7 shrink-0 items-center gap-4 overflow-hidden border-t border-line bg-panel px-3 text-[11px] whitespace-nowrap text-ink-3">
+        <Dot on label={account.plan === "daily" ? "Daily plan: every lead each morning" : `Free plan: ${plans?.freePerWeek ?? 10} leads a week`} title="Your lead plan" />
+        <Dot on={Boolean(plans?.email && account.digest)} label={plans?.email ? (account.digest ? "Email digests on" : "Email digests off") : "Email digests not set up"} title="Lead emails" />
+        <Dot on={Boolean(status?.claude)} label={status?.claude ? "AI customer finder on" : "AI customer finder needs a Claude key"} title="Find customers" />
+      </footer>
+    );
+  }
 
   return (
     <footer className="flex h-7 shrink-0 items-center justify-between gap-4 border-t border-line bg-panel px-3 text-[11px] text-ink-3">

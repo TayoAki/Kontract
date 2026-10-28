@@ -6,6 +6,7 @@ import { DATA_DIR, dataPath } from "./data-dir";
 // One SQLite file holds accounts (Better Auth's user/session/account/
 // verification tables) and each user's own records. Records are JSON
 // documents keyed by (user_id, id), so every query is scoped to one user.
+// Quote requests and feed health checks have their own tables.
 
 const g = globalThis as unknown as { __kontractDb?: DatabaseSync };
 
@@ -24,6 +25,39 @@ export function getDb(): DatabaseSync {
       PRIMARY KEY (user_id, kind, id)
     );
     CREATE INDEX IF NOT EXISTS app_record_user_kind ON app_record (user_id, kind, updated_at);
+
+    -- Shared, not per user: one row per health check of a public permit feed.
+    CREATE TABLE IF NOT EXISTS feed_check (
+      feed_id TEXT NOT NULL,
+      checked_at TEXT NOT NULL,
+      days INTEGER NOT NULL,
+      ok INTEGER NOT NULL,
+      rows INTEGER NOT NULL,
+      latest TEXT,
+      error TEXT,
+      ms INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS feed_check_feed ON feed_check (feed_id, checked_at);
+
+    -- A link a prime sends a subcontractor to quote a job. The token is the
+    -- only credential the sub has, so it's long and random.
+    CREATE TABLE IF NOT EXISTS quote_request (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      deal_id TEXT NOT NULL,
+      sub_id TEXT NOT NULL,
+      sub_name TEXT NOT NULL,
+      sub_email TEXT,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      viewed_at TEXT,
+      submitted_at TEXT,
+      imported_at TEXT,
+      snapshot TEXT NOT NULL,
+      response TEXT
+    );
+    CREATE INDEX IF NOT EXISTS quote_request_user ON quote_request (user_id, deal_id);
+    CREATE INDEX IF NOT EXISTS quote_request_email ON quote_request (sub_email);
   `);
   g.__kontractDb = db;
   return db;

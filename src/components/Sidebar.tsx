@@ -50,6 +50,7 @@ function Item({ o, deal, active, onClick }: { o: Opportunity; deal?: Deal; activ
           <Badge tone={fitTone(fit.score)} title={fit.verdict}>
             Fit {fit.score}
           </Badge>
+          {o.source === "sled" && <Badge title={o.portal}>{o.level === "state" ? "State" : "Local"}</Badge>}
           {deal && <Badge tone="accent">{stageLabel(deal.stage)}</Badge>}
           {o.isSample && <Badge>Sample</Badge>}
         </div>
@@ -79,6 +80,14 @@ function FilterPanel() {
           <Input value={filters.naics ?? ""} onChange={(e) => setFilters({ naics: e.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="e.g. 561730" inputMode="numeric" />
         </label>
       </div>
+      <label className="block">
+        <Label>Source</Label>
+        <Select value={filters.level ?? ""} onChange={(e) => setFilters({ level: e.target.value as OpportunitySearch["level"] })}>
+          <option value="">Federal, state and local</option>
+          <option value="federal">Federal only (SAM.gov)</option>
+          <option value="sled">State and local only</option>
+        </Select>
+      </label>
       <label className="block">
         <Label>Set-aside</Label>
         <Select value={filters.setAside ?? ""} onChange={(e) => setFilters({ setAside: e.target.value })}>
@@ -142,6 +151,8 @@ function FilterPanel() {
 
 function filterSummary(f: OpportunitySearch): string {
   const parts: string[] = [];
+  if (f.level === "federal") parts.push("Federal");
+  if (f.level === "sled") parts.push("State & local");
   if (f.servicesOnly) parts.push("Services");
   if (f.biddableOnly) parts.push("Open bids");
   if (f.state) parts.push(f.state);
@@ -165,6 +176,7 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
   const total = useApp((s) => s.resultsTotal);
   const source = useApp((s) => s.resultsSource);
   const asOf = useApp((s) => s.resultsAsOf);
+  const sledTotal = useApp((s) => s.resultsSled);
   const loadingMore = useApp((s) => s.loadingMore);
   const loadMore = useApp((s) => s.loadMore);
   const selectedId = useApp((s) => s.selectedId);
@@ -305,7 +317,7 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
       <div className="border-t border-line px-3 py-2 text-[11px] text-ink-3">
         {mode === "search"
           ? source === "bulk" && asOf
-            ? `SAM.gov daily file · ${formatDate(asOf, { hour: "numeric", minute: "2-digit" })}`
+            ? `SAM.gov daily file · ${formatDate(asOf, { hour: "numeric", minute: "2-digit" })}${sledTotal ? ` · ${sledTotal} state & local` : ""}`
             : `${results.length} shown`
           : `${bidList.length} bid${bidList.length === 1 ? "" : "s"}`}
       </div>

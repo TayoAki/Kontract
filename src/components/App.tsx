@@ -3,18 +3,22 @@
 import { X } from "lucide-react";
 import { useEffect } from "react";
 import { authClient, SIGNED_OUT_EVENT } from "@/lib/auth-client";
-import { AuthScreen } from "./AuthScreen";
+import { AuthScreen, type JoinParams } from "./AuthScreen";
 import { AlertsView } from "./AlertsView";
 import { BottomBar } from "./BottomBar";
 import { CrmView } from "./CrmView";
 import { HomeView } from "./HomeView";
 import { LeftRail } from "./LeftRail";
+import { takePendingAccount } from "./pending-account";
 import { PermitsView } from "./PermitsView";
 import { SettingsView } from "./SettingsView";
-import { useApp } from "./state";
+import { SourcesView } from "./SourcesView";
+import { api, useApp } from "./state";
+import { SubLeadsView, SubQuotesView, SubSettingsView } from "./SubViews";
+import { ProspectsView } from "./ProspectsView";
 import { Workspace } from "./Workspace";
 
-export function App() {
+export function App({ join }: { join?: JoinParams } = {}) {
   const { data: session, isPending, refetch } = authClient.useSession();
 
   // Any API call that comes back 401 means the session ended.
@@ -31,7 +35,7 @@ export function App() {
       </div>
     );
   }
-  if (!session) return <AuthScreen onSignedIn={() => void refetch()} />;
+  if (!session) return <AuthScreen onSignedIn={() => void refetch()} join={join} />;
   // Keyed by user so nothing from a previous account survives a switch.
   return <SignedInApp key={session.user.id} user={{ id: session.user.id, name: session.user.name, email: session.user.email }} />;
 }
@@ -39,12 +43,26 @@ export function App() {
 function SignedInApp({ user }: { user: { id: string; name: string; email: string } }) {
   const view = useApp((s) => s.view);
   const init = useApp((s) => s.init);
+  const role = useApp((s) => s.account?.role);
 
-  // Runs once per account (this component is keyed by user id).
+  // Runs once per account (this component is keyed by user id). Saves what
+  // was picked at sign-up (role, trade, area, invite) before loading.
   useEffect(() => {
     useApp.getState().reset(user);
-    void init();
+    const pending = takePendingAccount();
+    void (pending ? api("/api/account", { method: "PUT", body: JSON.stringify(pending) }).catch(() => undefined) : Promise.resolve()).then(() => init());
   }, [init]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pick up quotes subs send through their links: every minute, and when you come back to the tab.
+  useEffect(() => {
+    const sync = () => void useApp.getState().syncQuotes();
+    const t = setInterval(sync, 60_000);
+    window.addEventListener("focus", sync);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", sync);
+    };
+  }, []);
 
   return (
     <div className="flex h-dvh flex-col overflow-clip bg-bg text-ink">
@@ -55,8 +73,12 @@ function SignedInApp({ user }: { user: { id: string; name: string; email: string
           {(view === "search" || view === "bids") && <Workspace mode={view} />}
           {view === "permits" && <PermitsView />}
           {view === "crm" && <CrmView />}
+          {view === "sources" && <SourcesView />}
+          {view === "leads" && <SubLeadsView />}
+          {view === "quotes" && <SubQuotesView />}
+          {view === "prospects" && <ProspectsView />}
           {view === "alerts" && <AlertsView />}
-          {view === "settings" && <SettingsView />}
+          {view === "settings" && (role === "sub" ? <SubSettingsView /> : <SettingsView />)}
         </main>
       </div>
       <BottomBar />

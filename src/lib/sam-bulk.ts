@@ -211,21 +211,27 @@ async function getIndex({ wait }: { wait: boolean }): Promise<BulkIndex | null> 
   return state.index;
 }
 
+/** Search SAM.gov's notices plus `extra` (state and local bids). */
 export async function searchSamOpportunities(
   search: OpportunitySearch,
   page: { limit: number; offset: number },
   now: Date = new Date(),
+  extra: Opportunity[] = [],
 ): Promise<OpportunityResults> {
   const idx = await getIndex({ wait: true });
   if (!idx) {
-    const r = searchOpportunities(sampleOpportunities(now), search, { now, ...page });
+    const r = searchOpportunities([...sampleOpportunities(now), ...extra], search, { now, ...page });
     return {
       ...r,
       source: "sample",
       notice: `Couldn't load SAM.gov's daily file${state.error ? ` (${state.error})` : ""}. Showing sample data; it will retry automatically.`,
     };
   }
-  const r = searchOpportunities(idx.items, search, { now, ...page, descriptionOf: (o) => idx.descriptions.get(o.id) });
+  const r = searchOpportunities(extra.length ? [...idx.items, ...extra] : idx.items, search, {
+    now,
+    ...page,
+    descriptionOf: (o) => (o.source === "sled" ? o.description : idx.descriptions.get(o.id)),
+  });
   return { ...r, source: "bulk", dataAsOf: idx.meta.asOf ?? idx.meta.fetchedAt };
 }
 

@@ -76,7 +76,7 @@ const CATEGORIES: Category[] = [
     lines: [{ description: "Pest control service", unit: "month", quantityPerPeriod: 12 }],
   },
   {
-    match: /portable (toilet|restroom|latrine)|porta|sanitation units?|hand ?wash/i,
+    match: /portable (toilet|restroom|latrine)|\bporta[- ]?(potty|potties|johns?)\b|sanitation units?|hand ?wash/i,
     who: "A portable toilet rental company",
     terms: ["portable toilet rental", "porta potty rental", "portable restroom service"],
     awardKeywords: ["portable toilet", "portable latrine"],
@@ -84,7 +84,7 @@ const CATEGORIES: Category[] = [
     lines: [{ description: "Portable toilet (serviced weekly)", unit: "unit-month", quantityPerPeriod: 24 }],
   },
   {
-    match: /hvac|air condition|heating|boiler|chiller|refrigeration/i,
+    match: /hvac|air condition|heating|boiler|chiller|refrigeration|steam (traps?|systems?|lines?)/i,
     who: "A commercial HVAC contractor",
     terms: ["commercial HVAC contractor", "HVAC maintenance", "boiler service"],
     awardKeywords: ["HVAC maintenance", "preventive maintenance"],
@@ -132,7 +132,7 @@ const CATEGORIES: Category[] = [
     lines: [{ description: "Roofing work", unit: "job", quantityPerPeriod: 1 }],
   },
   {
-    match: /moving|relocation|furniture (install|moving)/i,
+    match: /\bmoving\b|relocation|furniture (install|moving)/i,
     who: "A commercial moving company",
     terms: ["commercial moving company", "office movers"],
     awardKeywords: ["moving services"],
