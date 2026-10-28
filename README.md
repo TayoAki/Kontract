@@ -123,7 +123,7 @@ npm run typecheck
 
 Accounts, bids, profiles and CRM contacts live in one SQLite file, `.data/kontract.db`; the SAM.gov index is `.data/sam-opportunities.jsonl`. Run it somewhere with a persistent disk: a VPS, or Railway/Render with a volume mounted and `DATA_DIR` pointing at it. `npm run build && npm start` runs the production server (it listens on `PORT`). It holds the notice index in memory (about 300–400 MB), and needs to reach sam.gov, usaspending.gov and the cities' open-data portals.
 
-On Railway: one service from this repo, a volume mounted at `/data`, and these variables: `DATA_DIR=/data`, `BETTER_AUTH_SECRET` (random), `BETTER_AUTH_URL` (the public `https://…` URL), plus whichever API keys you use. Anyone with the URL can create an account, so share it with the people you want.
+On Railway: one service from this repo, a volume mounted at `/data`, and these variables: `DATA_DIR=/data`, `BETTER_AUTH_URL` (the public `https://…` URL), `TRUSTED_IP_HEADER=x-real-ip` (so sign-in rate limits are per visitor), plus whichever API keys you use. `BETTER_AUTH_SECRET` is optional there: without it a secret is generated once into the volume. Anyone with the URL can create an account, so share it with the people you want.
 
 A bids file from before accounts existed (`.data/kontract.json`) is imported into the first account created, then renamed.
 

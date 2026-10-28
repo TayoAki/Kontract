@@ -47,6 +47,9 @@ function authOptions() {
       },
     },
     plugins: [nextCookies()],
+    // Behind a proxy, rate limits need the header it puts the client's IP in
+    // (x-real-ip on Railway). Only set it where the proxy overwrites that header.
+    advanced: process.env.TRUSTED_IP_HEADER ? { ipAddress: { ipAddressHeaders: [process.env.TRUSTED_IP_HEADER.toLowerCase()] } } : undefined,
   } satisfies BetterAuthOptions;
 }
 
