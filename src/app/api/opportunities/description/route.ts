@@ -1,14 +1,10 @@
 import { fail, json, readBody } from "@/lib/http";
-import { fetchDescription, SamError } from "@/lib/sam";
+import { samDescription } from "@/lib/sam-bulk";
 
 export async function POST(req: Request) {
-  const body = await readBody<{ url?: string }>(req);
-  if (!body?.url) return fail("Missing description url");
-  try {
-    return json({ description: await fetchDescription(body.url) });
-  } catch (err) {
-    if (err instanceof SamError) return fail(err.message, err.status);
-    console.error("description fetch failed", err);
-    return fail("Couldn't load the description from SAM.gov.", 502);
-  }
+  const body = await readBody<{ id?: string }>(req);
+  if (!body?.id) return fail("Missing notice id");
+  const description = await samDescription(body.id);
+  if (description === undefined) return fail("This notice isn't in today's SAM.gov file. It may have closed; open it on SAM.gov.", 404);
+  return json({ description });
 }

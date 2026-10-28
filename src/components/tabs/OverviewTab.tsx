@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowRight, CalendarClock, ExternalLink, FileDown, Mail, MapPin, Phone, RefreshCw, ShieldCheck, Sparkles, Star } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, CalendarClock, ExternalLink, FileDown, Loader2, Mail, MapPin, Phone, RefreshCw, ShieldCheck, Sparkles, Star } from "lucide-react";
+import { useEffect, useState } from "react";
 import { isSmallBusinessSetAside } from "@/lib/fit-score";
 import { daysUntil, formatDate, placeLabel } from "@/lib/format";
 import { rulesBreakdown } from "@/lib/rules";
@@ -66,44 +66,41 @@ function List({ title, items, tone }: { title: string; items: string[]; tone?: "
 function DescriptionBlock({ deal }: { deal: Deal }) {
   const o = deal.opportunity;
   const updateDeal = useApp((s) => s.updateDeal);
-  const status = useApp((s) => s.status);
   const [expanded, setExpanded] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const needsLoad = o.source === "bulk" && o.description === undefined;
 
-  async function load() {
-    if (!o.descriptionUrl) return;
-    setBusy(true);
+  // Search results arrive without descriptions; load this one from the local daily file.
+  useEffect(() => {
+    if (!needsLoad) return;
+    let cancelled = false;
     setError(null);
-    try {
-      const res = await fetch("/api/opportunities/description", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: o.descriptionUrl }),
-      });
-      const body = (await res.json()) as { description?: string; error?: string };
-      if (!res.ok) throw new Error(body.error || "Couldn't load the description");
-      updateDeal(deal.id, (d) => ({ ...d, opportunity: { ...d.opportunity, description: body.description || "(SAM.gov has no description for this notice. Check the attachments.)" } }), { track: false });
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+    fetch("/api/opportunities/description", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: o.id }),
+    })
+      .then(async (res) => {
+        const body = (await res.json()) as { description?: string; error?: string };
+        if (!res.ok) throw new Error(body.error || "Couldn't load the description");
+        if (!cancelled) updateDeal(deal.id, (d) => ({ ...d, opportunity: { ...d.opportunity, description: body.description ?? "" } }), { track: false });
+      })
+      .catch((err: Error) => !cancelled && setError(err.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [needsLoad, o.id, deal.id, updateDeal]);
 
-  if (!o.description) {
+  if (error) return <ErrorNote>{error}</ErrorNote>;
+  if (needsLoad) {
     return (
-      <div className="space-y-2">
-        {error && <ErrorNote>{error}</ErrorNote>}
-        {o.descriptionUrl && status?.sam ? (
-          <Button onClick={load} busy={busy}>
-            Load the full description
-          </Button>
-        ) : (
-          <p className="text-[13px] text-ink-2">No description loaded. Open the notice on SAM.gov to read it.</p>
-        )}
-      </div>
+      <p className="flex items-center gap-2 text-[13px] text-ink-3">
+        <Loader2 className="size-4 animate-spin" /> Loading the notice…
+      </p>
     );
+  }
+  if (!o.description) {
+    return <p className="text-[13px] text-ink-2">This notice has no written description. The details are in its attachments on SAM.gov.</p>;
   }
   const long = o.description.length > 900;
   return (
@@ -118,6 +115,76 @@ function DescriptionBlock({ deal }: { deal: Deal }) {
         </button>
       )}
     </div>
+  );
+}
+
+function Attachments({ deal }: { deal: Deal }) {
+  const o = deal.opportunity;
+  const updateDeal = useApp((s) => s.updateDeal);
+  const hasKey = useApp((s) => Boolean(s.status?.sam));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/opportunities/attachments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: o.id, postedDate: o.postedDate }),
+      });
+      const body = (await res.json()) as { attachments?: string[]; error?: string };
+      if (!res.ok) throw new Error(body.error || "Couldn't list attachments");
+      updateDeal(deal.id, (d) => ({ ...d, opportunity: { ...d.opportunity, attachments: body.attachments ?? [] } }), { track: false });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const samLink = (
+    <a href={o.samUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline">
+      See attachments on SAM.gov <ExternalLink className="size-3.5" />
+    </a>
+  );
+
+  if (o.attachments === null) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        {error && <ErrorNote>{error}</ErrorNote>}
+        {hasKey && (
+          <Button size="sm" onClick={() => void load()} busy={busy}>
+            <FileDown className="size-3.5" /> List attachments
+          </Button>
+        )}
+        {samLink}
+      </div>
+    );
+  }
+  if (o.attachments.length === 0) return <p className="text-[13px] text-ink-2">No attachments on this notice.</p>;
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {o.attachments.map((a, i) => {
+        const isUrl = /^https?:\/\//.test(a);
+        const name = isUrl ? `Attachment ${i + 1}` : a;
+        const cls = "inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs text-ink-2";
+        return (
+          <li key={`${a}-${i}`}>
+            {isUrl ? (
+              <a href={a} target="_blank" rel="noreferrer" className={cx(cls, "hover:text-ink")}>
+                <FileDown className="size-3.5" /> {name}
+              </a>
+            ) : (
+              <span className={cls}>
+                <FileDown className="size-3.5" /> {name}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -140,6 +207,11 @@ export function OverviewTab({ deal }: { deal: Deal }) {
           <div className="flex flex-wrap gap-1.5">
             {o.isSample && <Badge tone="warn">Sample notice</Badge>}
             {o.type && <Badge tone="accent">{o.type}</Badge>}
+            {o.versions && o.versions > 1 && (
+              <Badge tone="warn" title="Each amendment changes the notice; your proposal must acknowledge them.">
+                {o.versions - 1} amendment{o.versions === 2 ? "" : "s"}
+              </Badge>
+            )}
             {o.setAside && <Badge tone={sb ? "good" : "neutral"}>{o.setAside.replace(/\s*\(FAR 19\.5\)/, "")}</Badge>}
           </div>
           <div className="flex gap-2">
@@ -173,9 +245,9 @@ export function OverviewTab({ deal }: { deal: Deal }) {
         />
         <FactCard
           icon={<MapPin className="size-5" />}
-          label="Where the work is"
+          label={o.placeFromOffice ? "Contracting office" : "Where the work is"}
           value={placeLabel(o.placeOfPerformance)}
-          sub="Your subcontractor should be local to here"
+          sub={o.placeFromOffice ? "The notice doesn't say where the work is. Check the description." : "Your subcontractor should be local to here"}
         />
         <FactCard
           icon={<ShieldCheck className="size-5" />}
@@ -222,29 +294,12 @@ export function OverviewTab({ deal }: { deal: Deal }) {
         {!claude && <Note>Add ANTHROPIC_API_KEY to get Claude&apos;s full read of each notice, including what&apos;s buried in the description.</Note>}
       </Section>
 
-      <Section title="What the notice says" subtitle={`${o.attachments.length} attachment${o.attachments.length === 1 ? "" : "s"}`}>
+      <Section
+        title="What the notice says"
+        subtitle={o.attachments ? `${o.attachments.length} attachment${o.attachments.length === 1 ? "" : "s"}` : undefined}
+      >
         <DescriptionBlock deal={deal} />
-        {o.attachments.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
-            {o.attachments.map((a, i) => {
-              const isUrl = /^https?:\/\//.test(a);
-              const name = isUrl ? `Attachment ${i + 1}` : a;
-              return (
-                <li key={`${a}-${i}`}>
-                  {isUrl ? (
-                    <a href={a} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs text-ink-2 hover:text-ink">
-                      <FileDown className="size-3.5" /> {name}
-                    </a>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs text-ink-2">
-                      <FileDown className="size-3.5" /> {name}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <Attachments deal={deal} />
       </Section>
 
       <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">

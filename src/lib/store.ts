@@ -9,6 +9,9 @@ import type { CompanyProfile, Deal } from "./types";
 
 const DATA_DIR = path.resolve(/*turbopackIgnore: true*/ process.env.DATA_DIR || ".data");
 const DB_FILE = path.join(DATA_DIR, "kontract.json");
+
+/** Path of a file inside the data directory. */
+export const dataPath = (name: string) => path.join(DATA_DIR, name);
 const CACHE_FILE = path.join(DATA_DIR, "cache.json");
 
 export const EMPTY_PROFILE: CompanyProfile = {

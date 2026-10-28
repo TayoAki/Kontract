@@ -1,6 +1,7 @@
 import { explainClaudeError, hasClaude, streamDraft, type Effort } from "@/lib/claude";
 import { fail, readBody } from "@/lib/http";
 import { outreachPrompt, proposalPrompt, sowPrompt } from "@/lib/prompts";
+import { samDescription } from "@/lib/sam-bulk";
 import { getProfile } from "@/lib/store";
 import { outreachTemplate, proposalTemplate, sowTemplate } from "@/lib/templates";
 import type { Deal, DraftKind } from "@/lib/types";
@@ -18,6 +19,9 @@ export async function POST(req: Request) {
   if (!kind || !(kind in EFFORT)) return fail("Unknown draft kind");
   if (!deal?.opportunity) return fail("Missing deal");
 
+  if (deal.opportunity.description === undefined && deal.opportunity.source === "bulk") {
+    deal.opportunity.description = await samDescription(deal.opportunity.id);
+  }
   const profile = await getProfile();
   const sub = body.subId ? deal.subs.find((s) => s.id === body.subId) : undefined;
   const encoder = new TextEncoder();

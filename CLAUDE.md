@@ -19,14 +19,16 @@ Kontract helps a small business win government service contracts as the prime co
 
 | Module | Does |
 |---|---|
-| `src/lib/sam.ts` | SAM.gov search + descriptions (cached; ~10 requests/day without a role) |
+| `src/lib/sam-bulk.ts` | SAM.gov's daily file: download, index, hourly freshness check, search, descriptions |
+| `src/lib/csv.ts`, `sam-normalize.ts`, `opportunity-search.ts` | Streaming CSV + encoding, row → Opportunity (merging amendments), filters/sort/paging |
+| `src/lib/sam.ts` | SAM.gov API, only for attachment links (needs a key; ~10 requests/day without a role) |
 | `src/lib/usaspending.ts`, `pricing-stats.ts` | Past awards, typical per-year price, past winners |
 | `src/lib/places.ts` | Local businesses via Google Places or Apify |
 | `src/lib/claude.ts`, `prompts.ts` | Breakdown (structured output) and streamed drafts |
 | `src/lib/fit-score.ts`, `rules.ts` | Fit score and the no-AI breakdown |
 | `src/lib/bid-math.ts` | Sub cost, price, profit, margin, markup |
 | `src/lib/templates.ts` | Fill-in drafts when Claude isn't configured |
-| `src/lib/store.ts` | `.data/kontract.json` (deals, profile) and `.data/cache.json` |
+| `src/lib/store.ts` | `.data/kontract.json` (deals, profile) and `.data/cache.json` (the SAM.gov index is `.data/sam-opportunities.jsonl`) |
 
 ## Operating principles
 

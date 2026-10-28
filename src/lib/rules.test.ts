@@ -9,6 +9,8 @@ const byId = Object.fromEntries(sampleOpportunities(now).map((o) => [o.id, o]));
 test("cleanTitle drops trailing location and solicitation numbers", () => {
   assert.equal(cleanTitle("Grounds Maintenance and Landscaping Services - Denver Federal Center"), "Grounds Maintenance and Landscaping Services");
   assert.equal(cleanTitle("Aircraft Seat Assembly Parts, NSN 1680-01-555-0100"), "Aircraft Seat Assembly Parts NSN");
+  assert.equal(cleanTitle("Project No. 640A0-27-104, Replace Roof at Building 347 - Menlo Park"), "Replace Roof at Building 347");
+  assert.equal(cleanTitle("36C24127Q0017 Windows Washing Service"), "Windows Washing Service");
 });
 
 test("category keywords for pricing and sub search", () => {

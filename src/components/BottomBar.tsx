@@ -31,7 +31,17 @@ export function BottomBar() {
       <div className="flex min-w-0 items-center gap-4 overflow-hidden whitespace-nowrap">
         {status ? (
           <>
-            <Dot on={status.sam} label={status.sam ? "SAM.gov live" : "SAM.gov sample data"} title="Contract opportunities" />
+            <Dot
+              on={Boolean(status.samData?.count)}
+              label={
+                status.samData?.count
+                  ? `SAM.gov · ${status.samData.count.toLocaleString()} notices${status.samData.refreshing ? " (updating)" : ""}`
+                  : status.samData?.refreshing
+                    ? "SAM.gov downloading…"
+                    : "SAM.gov sample data"
+              }
+              title="Contract opportunities from SAM.gov's daily file"
+            />
             <Dot on label="USAspending live" title="Past award pricing (no key needed)" />
             <Dot on={status.claude} label={status.claude ? `Claude · ${status.model}` : "Claude off (templates)"} title="AI breakdowns and drafts" />
             <Dot

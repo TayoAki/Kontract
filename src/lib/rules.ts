@@ -167,6 +167,7 @@ const STOP = new Set(
 export function cleanTitle(title: string): string {
   const first = title.split(/\s[-–—|:]\s|\s\(|:\s/)[0] ?? title;
   return first
+    .replace(/\b(?:project|solicitation|sol|rfq|rfp|ifb|contract|requisition|order)\s*(?:no\.?|number|#)\s*/gi, " ")
     .replace(/\b[A-Z0-9]{2,}-?\d{2,}[A-Z0-9-]*\b/g, " ")
     .replace(/[^A-Za-z0-9&/ ]/g, " ")
     .replace(/\s+/g, " ")
@@ -254,7 +255,7 @@ export function rulesBreakdown(o: Opportunity, now: Date = new Date()): Breakdow
 
   const redFlags: string[] = [];
   if (service === false) redFlags.push("It's a product, not a service. You'd need a manufacturer or distributor.");
-  if (o.attachments.length >= 10) redFlags.push(`${o.attachments.length} attachments. Expect a long, technical package.`);
+  if ((o.attachments?.length ?? 0) >= 10) redFlags.push(`${o.attachments!.length} attachments. Expect a long, technical package.`);
   if (days != null && days >= 0 && days < 7) redFlags.push(`Only ${days} day${days === 1 ? "" : "s"} left to get a sub's quote.`);
   if (/mandatory site visit/i.test(o.description ?? "")) redFlags.push("Mandatory site visit. Someone has to attend in person.");
   if (/security clearance/i.test(o.description ?? "")) redFlags.push("Security clearance required.");
@@ -262,7 +263,7 @@ export function rulesBreakdown(o: Opportunity, now: Date = new Date()): Breakdow
 
   const unit = cat?.lines[0]?.unit ?? "unit";
   return {
-    plainEnglish: `${o.office || o.agency} needs ${what} in ${place}.${
+    plainEnglish: `${o.agency || o.office} needs ${what} in ${place}.${
       o.responseDeadline ? ` Responses are due ${formatDate(o.responseDeadline)}${days != null && days >= 0 ? ` (${days} days)` : ""}.` : ""
     }`,
     workType: service === false ? "product" : "service",

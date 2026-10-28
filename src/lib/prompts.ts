@@ -19,7 +19,8 @@ function opportunityBlock(o: Opportunity, now: Date): string {
     productServiceCode: o.pscCode,
     placeOfPerformance: placeLabel(o.placeOfPerformance),
     responseDeadline: o.responseDeadline ? `${formatDate(o.responseDeadline)}${days != null ? ` (${days} days from today)` : ""}` : null,
-    attachments: o.attachments.length,
+    attachments: o.attachments ? o.attachments.length : "not listed",
+    amendments: o.versions && o.versions > 1 ? o.versions - 1 : 0,
   };
   const description = o.description?.trim()
     ? o.description.trim()

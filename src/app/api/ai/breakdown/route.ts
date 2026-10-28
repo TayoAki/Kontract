@@ -1,7 +1,7 @@
 import { claudeBreakdown, explainClaudeError, hasClaude, MODEL } from "@/lib/claude";
 import { fail, json, readBody } from "@/lib/http";
 import { rulesBreakdown } from "@/lib/rules";
-import { fetchDescription, hasSamKey } from "@/lib/sam";
+import { samDescription } from "@/lib/sam-bulk";
 import { cacheGet, cacheSet } from "@/lib/store";
 import type { Breakdown, Opportunity } from "@/lib/types";
 
@@ -12,13 +12,8 @@ export async function POST(req: Request) {
   const o = body?.opportunity;
   if (!o?.id || !o.title) return fail("Missing opportunity");
 
-  if (!o.description && o.descriptionUrl && hasSamKey()) {
-    try {
-      o.description = await fetchDescription(o.descriptionUrl);
-    } catch (err) {
-      console.warn("description fetch failed; continuing without it", err);
-    }
-  }
+  // Search results arrive without descriptions; fill it in from the daily file.
+  if (o.description === undefined && o.source === "bulk") o.description = await samDescription(o.id);
 
   if (!hasClaude()) return json({ breakdown: rulesBreakdown(o), description: o.description ?? null });
 

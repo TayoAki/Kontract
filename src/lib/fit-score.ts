@@ -55,9 +55,11 @@ export function fitScore(o: Opportunity, now: Date = new Date()): FitScore {
         : { key: "service", label: "Service or product unclear", level: "ok", detail: "No product/service code on the notice. Read the description.", points: 15, max: 30 },
   );
 
-  const n = o.attachments.length;
+  const n = o.attachments?.length;
   criteria.push(
-    n <= 3
+    n == null
+      ? { key: "simple", label: "Attachments not listed", level: "ok", detail: "Open the notice on SAM.gov to see how big the package is.", points: 10, max: 20 }
+      : n <= 3
       ? { key: "simple", label: n === 0 ? "No attachments" : `${n} attachment${n === 1 ? "" : "s"}`, level: "good", detail: "Short package. You can understand the ask quickly.", points: 20, max: 20 }
       : n <= 9
         ? { key: "simple", label: `${n} attachments`, level: "ok", detail: "Medium package. Skim the statement of work first.", points: 10, max: 20 }

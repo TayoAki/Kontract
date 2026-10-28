@@ -1,6 +1,7 @@
-import type { Opportunity } from "./types.ts";
+import type { Contact, Opportunity, Place } from "./types.ts";
 
-// Pure helpers that turn SAM.gov API payloads into our Opportunity shape.
+// Pure helpers that turn rows of SAM.gov's daily Contract Opportunities
+// extract (ContractOpportunitiesFullCSV.csv) into our Opportunity shape.
 
 const SMALL = new Set(["of", "and", "the", "for", "in", "on", "at", "to", "a", "an", "or", "by"]);
 
@@ -25,68 +26,7 @@ export function prettyName(raw: string): string {
     .join("");
 }
 
-export interface SamNotice {
-  noticeId: string;
-  title?: string;
-  solicitationNumber?: string;
-  fullParentPathName?: string;
-  department?: string;
-  subTier?: string;
-  office?: string;
-  postedDate?: string;
-  type?: string;
-  baseType?: string;
-  typeOfSetAsideDescription?: string | null;
-  typeOfSetAside?: string | null;
-  responseDeadLine?: string | null;
-  naicsCode?: string | null;
-  classificationCode?: string | null;
-  pointOfContact?: { fullName?: string; title?: string; email?: string; phone?: string }[] | null;
-  placeOfPerformance?: {
-    city?: { name?: string };
-    state?: { code?: string; name?: string };
-    zip?: string;
-    country?: { code?: string };
-  } | null;
-  officeAddress?: { city?: string; state?: string; zipcode?: string } | null;
-  description?: string | null;
-  uiLink?: string;
-  resourceLinks?: string[] | null;
-}
-
-export function normalizeNotice(n: SamNotice): Opportunity {
-  const path = (n.fullParentPathName ?? "").split(".").filter(Boolean);
-  const agency = prettyName(path[0] ?? n.department ?? "");
-  const office = prettyName(path[path.length - 1] ?? n.office ?? n.subTier ?? "");
-  const pop = n.placeOfPerformance;
-  const place = pop?.state?.code
-    ? { city: pop.city?.name ? prettyName(pop.city.name) : undefined, state: pop.state.code, zip: pop.zip, country: pop.country?.code }
-    : { city: n.officeAddress?.city ? prettyName(n.officeAddress.city) : undefined, state: n.officeAddress?.state, zip: n.officeAddress?.zipcode };
-  return {
-    id: n.noticeId,
-    title: prettyName(n.title ?? "Untitled notice"),
-    solicitationNumber: n.solicitationNumber ?? "",
-    agency,
-    office: office === agency ? "" : office,
-    postedDate: n.postedDate ? new Date(n.postedDate).toISOString() : new Date().toISOString(),
-    responseDeadline: n.responseDeadLine ? new Date(n.responseDeadLine).toISOString() : null,
-    type: n.type ?? n.baseType ?? "",
-    setAside: n.typeOfSetAsideDescription ?? null,
-    setAsideCode: n.typeOfSetAside ?? null,
-    naicsCode: n.naicsCode ?? null,
-    pscCode: n.classificationCode ?? null,
-    placeOfPerformance: place,
-    contacts: (n.pointOfContact ?? [])
-      .filter((c) => c.fullName || c.email)
-      .map((c) => ({ name: c.fullName ?? c.email ?? "", title: c.title, email: c.email, phone: c.phone })),
-    attachments: n.resourceLinks ?? [],
-    descriptionUrl: n.description && /^https?:\/\//.test(n.description) ? n.description : null,
-    description: n.description && !/^https?:\/\//.test(n.description) ? n.description : undefined,
-    samUrl: n.uiLink ?? `https://sam.gov/opp/${n.noticeId}/view`,
-  };
-}
-
-/** Turn the notice's HTML description into readable plain text. */
+/** Turn an HTML description into readable plain text. */
 export function htmlToText(html: string): string {
   return html
     .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
@@ -105,3 +45,149 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
+/** Columns the extract must have; anything else is optional. */
+export const REQUIRED_COLUMNS = ["NoticeId", "Title", "Type", "PostedDate", "ResponseDeadLine", "Active"] as const;
+
+export type BulkRow = Record<string, string>;
+
+// SAM.gov times without an offset are Eastern; -05:00 is close enough for day counts.
+const EASTERN = "-05:00";
+
+/**
+ * Parse the extract's date formats: "2026-11-13T16:00:00-08:00",
+ * "2026-11-13T16:00:00", "2026-10-27 11:27:28" and "2026-11-13".
+ * Date-only values are treated as end of day for deadlines, midday otherwise.
+ */
+export function parseSamDate(raw: string, kind: "deadline" | "posted"): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  let iso = s;
+  if (/^\d{4}-\d\d-\d\d$/.test(s)) iso = `${s}T${kind === "deadline" ? "23:59:00" : "12:00:00"}${EASTERN}`;
+  else if (/^\d{4}-\d\d-\d\d[ T]\d\d:\d\d(:\d\d(\.\d+)?)?$/.test(s)) iso = `${s.replace(" ", "T")}${EASTERN}`;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : new Date(t).toISOString();
+}
+
+/** '["SBA"]', 'SBA', 'NONE', '' → 'SBA' | null */
+export function parseSetAsideCode(raw: string): string | null {
+  const code = raw.replace(/[[\]"'\s]/g, "").split(",")[0] ?? "";
+  return code && code.toUpperCase() !== "NONE" ? code : null;
+}
+
+function contact(row: BulkRow, prefix: "Primary" | "Secondary"): Contact | null {
+  const name = row[`${prefix}ContactFullname`]?.trim();
+  const email = row[`${prefix}ContactEmail`]?.trim();
+  if (!name && !email) return null;
+  return {
+    name: name || email!,
+    title: row[`${prefix}ContactTitle`]?.trim() || undefined,
+    email: email || undefined,
+    phone: row[`${prefix}ContactPhone`]?.trim() || undefined,
+  };
+}
+
+const opt = (v: string | undefined) => (v && v.trim() ? v.trim() : undefined);
+
+export function normalizeBulkRow(row: BulkRow): Opportunity | null {
+  const id = row.NoticeId?.trim();
+  if (!id) return null;
+  const agency = prettyName(row["Department/Ind.Agency"] ?? "");
+  const office = prettyName(row.Office || row["Sub-Tier"] || "");
+  const popState = opt(row.PopState);
+  const place: Place = popState
+    ? { city: opt(row.PopCity) && prettyName(row.PopCity!), state: popState, zip: opt(row.PopZip), country: opt(row.PopCountry) }
+    : { city: opt(row.City) && prettyName(row.City!), state: opt(row.State), zip: opt(row.ZipCode), country: opt(row.CountryCode) };
+  const rawDescription = (row.Description ?? "").replace(/\r\n?/g, "\n").trim();
+  const setAside = opt(row.SetASide);
+  const setAsideCode = parseSetAsideCode(row.SetASideCode ?? "");
+  return {
+    id,
+    // Some agencies prefix titles with the product/service code, e.g. "Z1DZ--Replace Roof".
+    title: prettyName(row.Title?.trim().replace(/^[A-Z0-9]{4}\s*--\s*/, "") || "Untitled notice"),
+    solicitationNumber: row["Sol#"]?.trim() ?? "",
+    agency,
+    office: office === agency ? "" : office,
+    postedDate: parseSamDate(row.PostedDate ?? "", "posted") ?? new Date(0).toISOString(),
+    responseDeadline: parseSamDate(row.ResponseDeadLine ?? "", "deadline"),
+    type: row.Type?.trim() || row.BaseType?.trim() || "",
+    setAside: setAsideCode && setAside && !/^no set aside/i.test(setAside) ? setAside : null,
+    setAsideCode,
+    naicsCode: opt(row.NaicsCode) ?? null,
+    pscCode: opt(row.ClassificationCode) ?? null,
+    placeOfPerformance: place,
+    placeFromOffice: popState ? undefined : true,
+    contacts: [contact(row, "Primary"), contact(row, "Secondary")].filter((c): c is Contact => c !== null),
+    attachments: null,
+    description: /<\w+[^>]*>/.test(rawDescription) ? htmlToText(rawDescription) : rawDescription,
+    samUrl: `https://sam.gov/opp/${id}/view`,
+    source: "bulk",
+  };
+}
+
+const KEEP_TYPES = new Set(["Solicitation", "Combined Synopsis/Solicitation", "Presolicitation", "Sources Sought"]);
+const NO_DEADLINE_MAX_AGE_DAYS = 90;
+
+/**
+ * Keep notices someone could still act on: solicitations, presolicitations
+ * and sources sought that are still open, or have no deadline and were
+ * posted in the last 90 days. Drops award notices, closed notices and the like.
+ */
+export function keepForSearch(o: Opportunity, now: Date = new Date()): boolean {
+  if (!KEEP_TYPES.has(o.type)) return false;
+  if (o.responseDeadline) return Date.parse(o.responseDeadline) >= now.getTime();
+  return now.getTime() - Date.parse(o.postedDate) <= NO_DEADLINE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+const SHORT_DESCRIPTION_RATIO = 0.6;
+const CANCELLED = /\bcancel(?:l?ed|lation|ling)?\b/i;
+
+/** Versions of one solicitation share this key (solicitation number + agency). */
+export function versionKey(o: Opportunity): string {
+  const sol = o.solicitationNumber.trim().toUpperCase();
+  return sol.length >= 4 ? `${sol}|${o.agency}` : `id:${o.id}`;
+}
+
+/** An award or cancellation closes out every earlier version of the solicitation. */
+export function closesOut(o: Opportunity): boolean {
+  return /^award/i.test(o.type) || CANCELLED.test(o.title);
+}
+
+/**
+ * SAM.gov posts each amendment as its own notice. Merge versions that share a
+ * solicitation number and agency: keep the newest (current deadline, type and
+ * contacts) and count the versions. If the newest description is much shorter
+ * than an earlier one (e.g. "Amendment 2 extends the deadline"), append the
+ * fullest earlier text so the whole scope is still there. Drops solicitations
+ * that were awarded or cancelled after their newest open version
+ * (`closedAt`: version key → latest award/cancellation posted date).
+ */
+export function mergeVersions(
+  entries: [Opportunity, string | undefined][],
+  closedAt: Map<string, string> = new Map(),
+): [Opportunity, string | undefined][] {
+  const groups = new Map<string, [Opportunity, string | undefined][]>();
+  for (const e of entries) {
+    const key = versionKey(e[0]);
+    const g = groups.get(key);
+    if (g) g.push(e);
+    else groups.set(key, [e]);
+  }
+  const out: [Opportunity, string | undefined][] = [];
+  for (const [key, g] of groups) {
+    g.sort((a, b) => b[0].postedDate.localeCompare(a[0].postedDate));
+    const [latest, latestDesc] = g[0]!;
+    const closed = closedAt.get(key);
+    if (closesOut(latest) || (closed && closed >= latest.postedDate)) continue;
+    if (g.length === 1) {
+      out.push(g[0]!);
+      continue;
+    }
+    const fullest = g.reduce((best, e) => ((e[1]?.length ?? 0) > (best[1]?.length ?? 0) ? e : best), g[0]!);
+    let description = latestDesc;
+    if (fullest !== g[0] && fullest[1] && (latestDesc?.length ?? 0) < fullest[1].length * SHORT_DESCRIPTION_RATIO) {
+      description = latestDesc ? `${latestDesc}\n\nEarlier version of this notice:\n${fullest[1]}` : fullest[1];
+    }
+    out.push([{ ...latest, versions: g.length }, description]);
+  }
+  return out;
+}

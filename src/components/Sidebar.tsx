@@ -4,8 +4,8 @@ import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { STAGES, stageLabel } from "@/lib/deal";
 import { fitScore } from "@/lib/fit-score";
-import { daysUntil, placeLabel } from "@/lib/format";
-import type { Deal, Opportunity, OpportunitySearch, Stage } from "@/lib/types";
+import { daysUntil, formatDate, placeLabel } from "@/lib/format";
+import type { Deal, Opportunity, OpportunitySearch, OpportunitySort, Stage } from "@/lib/types";
 import { DEFAULT_FILTERS, useApp } from "./state";
 import { Avatar, Badge, Button, Chip, cx, dueText, dueTone, ErrorNote, Input, Label, Note, Select, Toggle } from "./ui";
 
@@ -92,8 +92,9 @@ function FilterPanel() {
       <div className="grid grid-cols-2 gap-2">
         <label>
           <Label>Posted within</Label>
-          <Select value={filters.postedWithinDays ?? 30} onChange={(e) => setFilters({ postedWithinDays: Number(e.target.value) })}>
-            {[7, 14, 30, 60, 90].map((d) => (
+          <Select value={filters.postedWithinDays ?? 0} onChange={(e) => setFilters({ postedWithinDays: Number(e.target.value) })}>
+            <option value={0}>Any time</option>
+            {[3, 7, 14, 30, 90].map((d) => (
               <option key={d} value={d}>
                 {d} days
               </option>
@@ -147,6 +148,7 @@ function filterSummary(f: OpportunitySearch): string {
   if (f.naics) parts.push(`NAICS ${f.naics}`);
   if (f.setAside) parts.push(SET_ASIDES.find(([v]) => v === f.setAside)?.[1] ?? f.setAside);
   if (f.minDaysToRespond) parts.push(`${f.minDaysToRespond}+ days`);
+  if (f.postedWithinDays) parts.push(`Posted ≤${f.postedWithinDays}d`);
   return parts.join(" · ") || "All notices";
 }
 
@@ -160,6 +162,11 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
   const searching = useApp((s) => s.searching);
   const searchError = useApp((s) => s.searchError);
   const notice = useApp((s) => s.resultsNotice);
+  const total = useApp((s) => s.resultsTotal);
+  const source = useApp((s) => s.resultsSource);
+  const asOf = useApp((s) => s.resultsAsOf);
+  const loadingMore = useApp((s) => s.loadingMore);
+  const loadMore = useApp((s) => s.loadMore);
   const selectedId = useApp((s) => s.selectedId);
   const select = useApp((s) => s.select);
   const [showFilters, setShowFilters] = useState(false);
@@ -205,7 +212,7 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
               <Input
                 value={filters.q ?? ""}
                 onChange={(e) => setFilters({ q: e.target.value })}
-                placeholder="Keyword in title, e.g. janitorial"
+                placeholder="Keyword, e.g. janitorial"
                 aria-label="Search opportunities"
                 className="pl-8"
               />
@@ -219,6 +226,26 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
               <span className="truncate">{filterSummary(filters)}</span>
               {showFilters ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
             </button>
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <span className="truncate text-xs text-ink-2" aria-live="polite">
+                {searching || (!source && !searchError) ? "Searching…" : `${total.toLocaleString()} ${source === "sample" ? "sample " : ""}notice${total === 1 ? "" : "s"}`}
+              </span>
+              <label className="flex items-center gap-1.5 text-xs text-ink-3">
+                Sort
+                <Select
+                  value={filters.sort ?? "fit"}
+                  onChange={(e) => {
+                    setFilters({ sort: e.target.value as OpportunitySort });
+                    void search();
+                  }}
+                  className="h-7 w-auto pr-7 pl-2 text-xs"
+                >
+                  <option value="fit">Best fit</option>
+                  <option value="deadline">Due soonest</option>
+                  <option value="newest">Newest</option>
+                </Select>
+              </label>
+            </div>
           </form>
         )}
 
@@ -244,12 +271,13 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
             {(notice || searchError) && (
               <div className="space-y-2 p-3">
                 {searchError && <ErrorNote>{searchError}</ErrorNote>}
-                {notice && <Note tone={notice.startsWith("Sample") ? "warn" : "accent"}>{notice}</Note>}
+                {notice && <Note tone={source === "sample" ? "warn" : "accent"}>{notice}</Note>}
               </div>
             )}
             {searching && (
-              <div className="flex items-center gap-2 px-3 py-3 text-xs text-ink-3">
-                <Loader2 className="size-4 animate-spin" /> Searching SAM.gov…
+              <div className="flex items-start gap-2 px-3 py-3 text-xs text-ink-3">
+                <Loader2 className="size-4 shrink-0 animate-spin" />
+                {source ? "Searching…" : "Loading SAM.gov's daily file of open notices. The first load downloads it and takes about 30 seconds."}
               </div>
             )}
             {!searching && results.length === 0 && !searchError && (
@@ -258,6 +286,13 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
             {results.map((o) => (
               <Item key={o.id} o={o} deal={deals[o.id]} active={o.id === selectedId} onClick={() => select(o)} />
             ))}
+            {!searching && results.length < total && (
+              <div className="p-3">
+                <Button className="w-full" onClick={() => void loadMore()} busy={loadingMore}>
+                  Show more ({(total - results.length).toLocaleString()} left)
+                </Button>
+              </div>
+            )}
           </>
         )}
         {mode === "bids" &&
@@ -268,7 +303,11 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
           ))}
       </div>
       <div className="border-t border-line px-3 py-2 text-[11px] text-ink-3">
-        {mode === "search" ? `${results.length} result${results.length === 1 ? "" : "s"}` : `${bidList.length} bid${bidList.length === 1 ? "" : "s"}`}
+        {mode === "search"
+          ? source === "bulk" && asOf
+            ? `SAM.gov daily file · ${formatDate(asOf, { hour: "numeric", minute: "2-digit" })}`
+            : `${results.length} shown`
+          : `${bidList.length} bid${bidList.length === 1 ? "" : "s"}`}
       </div>
     </div>
   );

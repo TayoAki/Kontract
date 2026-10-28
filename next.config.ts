@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Data is stored in a local JSON file (see src/lib/store.ts), so keep the
-  // server long-lived rather than serverless.
-  output: "standalone",
-};
+// Data lives in local files (src/lib/store.ts, src/lib/sam-bulk.ts), so run
+// it as a long-lived server (`npm start`), not serverless.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

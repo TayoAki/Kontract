@@ -2,6 +2,7 @@
 
 import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/format";
 import type { CompanyProfile } from "@/lib/types";
 import { useApp } from "./state";
 import { Badge, Button, Card, Input, Label, NumberInput, Section, TextArea } from "./ui";
@@ -22,9 +23,9 @@ const INTEGRATIONS = [
   {
     key: "sam" as const,
     name: "SAM.gov opportunities",
-    env: "SAM_API_KEY",
-    what: "Live contract opportunities and full descriptions.",
-    how: "Free. Sign in at sam.gov → Profile → Public API Key. Without a role, keys allow about 10 requests a day; Kontract caches results.",
+    env: "SAM_API_KEY (optional)",
+    what: "Every open federal notice from SAM.gov's free daily file. Kontract downloads it and searches it locally, with no key and no rate limit, and checks hourly for a new file.",
+    how: "Optional: add SAM_API_KEY (free at sam.gov → Profile → Public API Key) to list each notice's attachments here. Keys without a role allow about 10 requests a day; each notice costs one.",
   },
   {
     key: "claude" as const,
@@ -57,6 +58,22 @@ export function SettingsView() {
   const deals = useApp((s) => s.deals);
   const [form, setForm] = useState<CompanyProfile | null>(profile);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const refreshStatus = useApp((s) => s.refreshStatus);
+
+  async function checkSam() {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/opportunities/refresh", { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await refreshStatus();
+      say("SAM.gov data is up to date");
+    } catch (err) {
+      say(`Couldn't check SAM.gov: ${(err as Error).message}`);
+    } finally {
+      setChecking(false);
+    }
+  }
 
   useEffect(() => {
     if (profile && !form) setForm(profile);
@@ -115,19 +132,53 @@ export function SettingsView() {
         <Section title="Connections" subtitle="Add keys to .env.local next to package.json, then restart the app.">
           <Card className="divide-y divide-line">
             {INTEGRATIONS.map((i) => {
-              const on = i.key === "usaspending" ? true : i.key === "places" ? Boolean(status?.places) : Boolean(status?.[i.key]);
+              const on =
+                i.key === "usaspending" ? true : i.key === "places" ? Boolean(status?.places) : i.key === "sam" ? Boolean(status?.samData?.count) : Boolean(status?.[i.key]);
+              const sam = status?.samData;
               return (
                 <div key={i.key} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
                   <div className="sm:w-48">
                     <div className="text-[13px] font-semibold text-ink">{i.name}</div>
                     <Badge tone={on ? "good" : "neutral"} className="mt-1">
-                      {on ? (i.key === "places" ? `On · ${status?.places}` : i.key === "claude" ? `On · ${status?.model}` : "On") : "Not set"}
+                      {i.key === "sam"
+                        ? sam?.count
+                          ? `On · ${sam.count.toLocaleString()} notices`
+                          : sam?.refreshing
+                            ? "Downloading…"
+                            : "Not loaded"
+                        : on
+                          ? i.key === "places"
+                            ? `On · ${status?.places}`
+                            : i.key === "claude"
+                              ? `On · ${status?.model}`
+                              : "On"
+                          : "Not set"}
                     </Badge>
+                    {i.key === "sam" && (
+                      <Badge tone={status?.sam ? "good" : "neutral"} className="mt-1 ml-1">
+                        {status?.sam ? "Key set" : "No key"}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex-1 text-xs text-ink-2">
                     <p>{i.what}</p>
                     <p className="mt-1 text-ink-3">{i.how}</p>
                     {i.env !== "none" && <code className="mt-1.5 inline-block rounded bg-panel-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">{i.env}</code>}
+                    {i.key === "sam" && (
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <span className="text-ink-3">
+                          {sam?.asOf
+                            ? `File published ${formatDate(sam.asOf, { hour: "numeric", minute: "2-digit" })}`
+                            : sam?.refreshing
+                              ? "Downloading today's file…"
+                              : "No file downloaded yet"}
+                          {sam?.error && <span className="text-bad"> · Last check failed: {sam.error}</span>}
+                        </span>
+                        <Button size="sm" busy={checking} onClick={() => void checkSam()}>
+                          Check for a new file
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

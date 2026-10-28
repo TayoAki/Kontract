@@ -30,30 +30,53 @@ export interface Opportunity {
   pscCode: string | null;
   placeOfPerformance: Place;
   contacts: Contact[];
-  attachments: string[];
-  descriptionUrl: string | null;
-  /** Present on sample data, or once fetched from SAM.gov. */
+  /** Attachment links, or null when unknown (SAM.gov's daily file doesn't list them). */
+  attachments: string[] | null;
+  /** Loaded on demand for search results; "" means the notice has none. */
   description?: string;
   samUrl: string;
+  /** True when SAM.gov gave no place of performance and this is the contracting office's location. */
+  placeFromOffice?: boolean;
+  /** How many versions (original + amendments) SAM.gov has posted under this solicitation number. */
+  versions?: number;
+  source?: "bulk" | "sample";
   isSample?: boolean;
 }
+
+export type OpportunitySort = "fit" | "deadline" | "newest";
 
 export interface OpportunitySearch {
   q?: string;
   state?: string;
   naics?: string;
   setAside?: string;
+  /** 0 or missing means any time. */
   postedWithinDays?: number;
   minDaysToRespond?: number;
   servicesOnly?: boolean;
   biddableOnly?: boolean;
+  sort?: OpportunitySort;
 }
 
 export interface OpportunityResults {
   results: Opportunity[];
   total: number;
-  source: "sam" | "sample";
+  offset: number;
+  source: "bulk" | "sample";
+  /** When SAM.gov published the daily file these results come from. */
+  dataAsOf?: string;
   notice?: string;
+}
+
+export interface SamDataStatus {
+  /** When SAM.gov published the file in use. */
+  asOf: string | null;
+  /** When Kontract downloaded it. */
+  fetchedAt: string;
+  /** Notices kept in the local index (open or recently posted). */
+  count: number;
+  refreshing: boolean;
+  error: string | null;
 }
 
 /** A past federal contract award from USAspending.gov. */
@@ -204,7 +227,9 @@ export interface CompanyProfile {
 }
 
 export interface IntegrationStatus {
+  /** SAM_API_KEY is set (used to list attachments). */
   sam: boolean;
+  samData: SamDataStatus | null;
   claude: boolean;
   places: "google" | "apify" | null;
   usaspending: true;

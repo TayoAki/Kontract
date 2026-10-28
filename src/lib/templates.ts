@@ -175,7 +175,7 @@ ${priceTable(deal)}
 ## Requirements and certifications
 ${(b.keyRequirements.length ? b.keyRequirements : ["[Licenses, insurance and any certifications the solicitation asks for]"]).map((r) => `- ${r}`).join("\n")}
 - Active SAM.gov registration (UEI ${or(profile.uei, "UEI")})
-- [Acknowledge any amendments by number and date]
+${(o.versions ?? 1) > 1 ? `- Acknowledges all ${(o.versions ?? 1) - 1} amendment(s): [list each number and date]` : "- [Acknowledge any amendments by number and date]"}
 
 Sincerely,
 ${or(profile.contactName, "name")}

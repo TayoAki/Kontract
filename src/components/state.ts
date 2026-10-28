@@ -8,6 +8,7 @@ import type {
   Deal,
   IntegrationStatus,
   Opportunity,
+  OpportunityResults,
   OpportunitySearch,
   PricingResults,
 } from "@/lib/types";
@@ -20,11 +21,26 @@ export const DEFAULT_FILTERS: OpportunitySearch = {
   state: "",
   naics: "",
   setAside: "",
-  postedWithinDays: 30,
+  postedWithinDays: 0,
   minDaysToRespond: 5,
   servicesOnly: true,
   biddableOnly: true,
+  sort: "fit",
 };
+
+const PAGE_SIZE = 100;
+let searchSeq = 0;
+
+function searchParams(f: OpportunitySearch, offset: number): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(f)) {
+    if (v === undefined || v === "" || v === false || v === 0) continue;
+    params.set(k, v === true ? "1" : String(v));
+  }
+  params.set("limit", String(PAGE_SIZE));
+  if (offset) params.set("offset", String(offset));
+  return params;
+}
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -88,9 +104,12 @@ interface AppState {
 
   filters: OpportunitySearch;
   results: Opportunity[];
-  resultsSource: "sam" | "sample" | null;
+  resultsTotal: number;
+  resultsSource: OpportunityResults["source"] | null;
+  resultsAsOf: string | null;
   resultsNotice: string | null;
   searching: boolean;
+  loadingMore: boolean;
   searchError: string | null;
 
   selectedId: string | null;
@@ -102,7 +121,9 @@ interface AppState {
   setTab(t: Tab): void;
   setSidebarOpen(open: boolean): void;
   setFilters(patch: Partial<OpportunitySearch>): void;
+  refreshStatus(): Promise<void>;
   search(): Promise<void>;
+  loadMore(): Promise<void>;
   select(o: Opportunity | Deal): void;
   open(id: string, tab?: Tab): void;
   /** Change a deal. Tracks it (adds to My bids) unless `track: false`. */
@@ -127,9 +148,12 @@ export const useApp = create<AppState>((set, get) => ({
 
   filters: DEFAULT_FILTERS,
   results: [],
+  resultsTotal: 0,
   resultsSource: null,
+  resultsAsOf: null,
   resultsNotice: null,
   searching: false,
+  loadingMore: false,
   searchError: null,
 
   selectedId: null,
@@ -160,24 +184,51 @@ export const useApp = create<AppState>((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setFilters: (patch) => set({ filters: { ...get().filters, ...patch } }),
 
+  async refreshStatus() {
+    const status = await api<IntegrationStatus>("/api/status").catch(() => null);
+    if (status) set({ status });
+  },
+
   async search() {
-    const f = get().filters;
-    const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(f)) {
-      if (v === undefined || v === "" || v === false) continue;
-      params.set(k, v === true ? "1" : String(v));
-    }
+    const seq = ++searchSeq;
     set({ searching: true, searchError: null });
     try {
-      const r = await api<{ results: Opportunity[]; source: "sam" | "sample"; notice?: string }>(`/api/opportunities?${params}`);
-      set({ results: r.results, resultsSource: r.source, resultsNotice: r.notice ?? null, searching: false });
+      const r = await api<OpportunityResults>(`/api/opportunities?${searchParams(get().filters, 0)}`);
+      if (seq !== searchSeq) return; // a newer search started
+      set({
+        results: r.results,
+        resultsTotal: r.total,
+        resultsSource: r.source,
+        resultsAsOf: r.dataAsOf ?? null,
+        resultsNotice: r.notice ?? null,
+        searching: false,
+      });
       const { selectedId, view } = get();
       const wide = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
       if (wide && view === "search" && (!selectedId || !r.results.some((o) => o.id === selectedId)) && r.results[0]) {
         get().select(r.results[0]);
       }
+      // The first search may have waited for the daily file; pick up its status.
+      if (r.source === "bulk" && !get().status?.samData?.count) void get().refreshStatus();
     } catch (err) {
-      set({ searching: false, searchError: (err as Error).message });
+      if (seq === searchSeq) set({ searching: false, searchError: (err as Error).message });
+    }
+  },
+
+  async loadMore() {
+    const { results, resultsTotal, loadingMore, searching, filters } = get();
+    if (loadingMore || searching || results.length >= resultsTotal) return;
+    const seq = searchSeq;
+    set({ loadingMore: true });
+    try {
+      const r = await api<OpportunityResults>(`/api/opportunities?${searchParams(filters, results.length)}`);
+      if (seq !== searchSeq) return;
+      const seen = new Set(get().results.map((o) => o.id));
+      set({ results: [...get().results, ...r.results.filter((o) => !seen.has(o.id))], resultsTotal: r.total });
+    } catch (err) {
+      set({ toast: `Couldn't load more: ${(err as Error).message}` });
+    } finally {
+      set({ loadingMore: false });
     }
   },
 

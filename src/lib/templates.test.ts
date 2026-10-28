@@ -55,3 +55,9 @@ test("proposal fills company info and leaves placeholders for gaps", () => {
   assert.match(text, /\| CAGE code \| \[CAGE code\] \|/);
   assert.match(text, /Dear Jordan Ellis/);
 });
+
+test("proposal asks to acknowledge the amendments SAM.gov posted", () => {
+  const d = priced();
+  d.opportunity = { ...d.opportunity, versions: 3 };
+  assert.match(proposalTemplate(d, profile, now), /Acknowledges all 2 amendment\(s\)/);
+});

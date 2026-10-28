@@ -1,11 +1,11 @@
 import { addDays } from "./format.ts";
 import type { Opportunity, Subcontractor } from "./types.ts";
 
-// Sample notices shown until a SAM.gov API key is configured. They are
-// modeled on common first-bid service contracts and are clearly marked as
-// samples in the UI. Deadlines are relative to today so they never go stale.
+// Sample notices shown when SAM.gov's daily file can't be downloaded (and in
+// tests). They are modeled on common first-bid service contracts and are
+// clearly marked as samples in the UI. Deadlines are relative to today.
 
-interface Seed extends Omit<Opportunity, "postedDate" | "responseDeadline" | "isSample" | "samUrl" | "descriptionUrl"> {
+interface Seed extends Omit<Opportunity, "postedDate" | "responseDeadline" | "isSample" | "samUrl" | "source"> {
   postedDaysAgo: number;
   dueInDays: number;
 }
@@ -198,8 +198,8 @@ export function sampleOpportunities(now: Date = new Date()): Opportunity[] {
     ...o,
     postedDate: addDays(now, -postedDaysAgo).toISOString(),
     responseDeadline: addDays(now, dueInDays).toISOString(),
-    descriptionUrl: null,
     samUrl: "https://sam.gov/search/?index=opp",
+    source: "sample" as const,
     isSample: true,
   }));
 }

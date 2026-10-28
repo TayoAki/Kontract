@@ -45,7 +45,8 @@ function useReadiness(deal: Deal): Check[] {
   const days = daysUntil(deal.opportunity.responseDeadline);
   const selected = deal.subs.find((s) => s.status === "selected");
   const quoted = deal.subs.some((s) => s.quote);
-  const attachments = deal.opportunity.attachments.length;
+  const attachments = deal.opportunity.attachments?.length ?? 0;
+  const amendments = (deal.opportunity.versions ?? 1) - 1;
   const missing = [
     !profile?.companyName && "company name",
     !profile?.uei && "UEI",
@@ -74,6 +75,15 @@ function useReadiness(deal: Deal): Check[] {
       : days < 0
         ? { level: "bad", label: "Deadline passed", detail: formatDate(deal.opportunity.responseDeadline) }
         : { level: days >= 2 ? "good" : "ok", label: `Due ${formatDate(deal.opportunity.responseDeadline)}`, detail: days === 0 ? "Today. Submit early, portals get slow." : `${days} day${days === 1 ? "" : "s"} left. Submit a day early.` },
+    ...(amendments > 0
+      ? [
+          {
+            level: "ok" as const,
+            label: `Acknowledge ${amendments} amendment${amendments === 1 ? "" : "s"}`,
+            detail: "List each amendment number and date in your proposal (or sign the SF-30). Read them: they can change the scope or deadline.",
+          },
+        ]
+      : []),
     {
       level: "ok",
       label: "Follow the instructions",
