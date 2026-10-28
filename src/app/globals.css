@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-2: #f8f9fb;
+  --line: #e5e7ec;
+  --line-strong: #cfd4dc;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #8b93a1;
+  --accent: #2456d3;
+  --accent-ink: #1c46b0;
+  --accent-soft: #e9effd;
+  --on-accent: #ffffff;
+  --good: #11795a;
+  --good-soft: #e5f5ee;
+  --warn: #a8540a;
+  --warn-soft: #fdf2e3;
+  --bad: #c23519;
+  --bad-soft: #fcebe6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0c0e13;
+    --panel: #13161d;
+    --panel-2: #181c24;
+    --line: #242936;
+    --line-strong: #323949;
+    --ink: #eceff4;
+    --ink-2: #aab2c0;
+    --ink-3: #6f7889;
+    --accent: #6d94ff;
+    --accent-ink: #a3bbff;
+    --accent-soft: #1a2445;
+    --on-accent: #0c0e13;
+    --good: #43cc93;
+    --good-soft: #10291e;
+    --warn: #f0a43a;
+    --warn-soft: #2c210f;
+    --bad: #ff7b5c;
+    --bad-soft: #2e1813;
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, quiet scrollbars inside panels */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

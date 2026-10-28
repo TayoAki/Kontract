@@ -1,0 +1,225 @@
+"use client";
+
+import { Copy, Download, Loader2, Printer, Send, Sparkles, Square, ThumbsDown, Trophy } from "lucide-react";
+import { useRef, useState } from "react";
+import { bidTotals } from "@/lib/bid-math";
+import { daysUntil, formatDate, money } from "@/lib/format";
+import type { Level } from "@/lib/fit-score";
+import type { Deal } from "@/lib/types";
+import { Markdown } from "../Markdown";
+import { useApp, type Tab } from "../state";
+import { useDraft } from "../useDraft";
+import { Badge, Button, Card, Empty, ErrorNote, LevelIcon, Note, Section, TextArea } from "../ui";
+import { copyText, downloadText, slug } from "./SubsTab";
+
+const PRINT_CSS = `
+  body { font: 13.5px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #111; max-width: 760px; margin: 40px auto; padding: 0 24px; }
+  h2 { font-size: 22px; margin: 0 0 12px; } h3 { font-size: 16px; margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; } h4 { font-size: 14px; margin: 16px 0 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; } th, td { border-bottom: 1px solid #ddd; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { border-bottom: 1px solid #999; } .text-right { text-align: right; } ul, ol { padding-left: 20px; } li { margin: 3px 0; } hr { border: 0; border-top: 1px solid #ddd; }
+  @page { margin: 18mm; }
+`;
+
+/** Print the rendered proposal in its own window, so it isn't clipped by the app layout. */
+function printHtml(html: string, title: string): boolean {
+  const w = window.open("", "_blank", "width=900,height=1000");
+  if (!w) return false;
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><style>${PRINT_CSS}</style></head><body>${html}</body></html>`);
+  w.document.title = title;
+  w.document.close();
+  w.focus();
+  w.print();
+  return true;
+}
+
+interface Check {
+  level: Level;
+  label: string;
+  detail: string;
+  fix?: { label: string; tab?: Tab; settings?: boolean };
+}
+
+function useReadiness(deal: Deal): Check[] {
+  const profile = useApp((s) => s.profile);
+  const t = bidTotals(deal.pricing);
+  const days = daysUntil(deal.opportunity.responseDeadline);
+  const selected = deal.subs.find((s) => s.status === "selected");
+  const quoted = deal.subs.some((s) => s.quote);
+  const attachments = deal.opportunity.attachments.length;
+  const missing = [
+    !profile?.companyName && "company name",
+    !profile?.uei && "UEI",
+    !profile?.cage && "CAGE code",
+    !profile?.email && "email",
+  ].filter(Boolean) as string[];
+  return [
+    t.pricePerPeriod > 0 && t.profitPerPeriod > 0
+      ? { level: "good", label: "Price is set", detail: `${money(t.priceTotal)} total, ${money(t.profitTotal)} profit` }
+      : t.pricePerPeriod > 0
+        ? { level: "ok", label: "Price set, but no profit", detail: "Your price doesn't cover the sub's cost plus a margin.", fix: { label: "Fix price", tab: "pricing" } }
+        : { level: "bad", label: "No price yet", detail: "Add your sub's quote and put your price on top.", fix: { label: "Build price", tab: "pricing" } },
+    selected
+      ? { level: "good", label: "Subcontractor selected", detail: selected.name }
+      : quoted
+        ? { level: "ok", label: "Quote in, nobody selected", detail: "Mark the sub you're going with as Selected.", fix: { label: "Pick one", tab: "subs" } }
+        : { level: "bad", label: "No subcontractor lined up", detail: "Never submit without someone who will do the work.", fix: { label: "Find subs", tab: "subs" } },
+    missing.length === 0
+      ? { level: "good", label: "Company info complete", detail: `UEI ${profile!.uei} · CAGE ${profile!.cage}` }
+      : { level: "bad", label: "Company info missing", detail: `Add your ${missing.join(", ")}.`, fix: { label: "Edit profile", settings: true } },
+    deal.subs.some((s) => s.vetting.pastPerformance) || profile?.capabilities
+      ? { level: "good", label: "Past performance ready", detail: "Use your sub's similar jobs if this is your first contract." }
+      : { level: "ok", label: "Past performance", detail: "Ask your sub for 2–3 similar jobs you can list.", fix: { label: "Subs", tab: "subs" } },
+    days == null
+      ? { level: "ok", label: "Check the deadline", detail: "No response date on the notice." }
+      : days < 0
+        ? { level: "bad", label: "Deadline passed", detail: formatDate(deal.opportunity.responseDeadline) }
+        : { level: days >= 2 ? "good" : "ok", label: `Due ${formatDate(deal.opportunity.responseDeadline)}`, detail: days === 0 ? "Today. Submit early, portals get slow." : `${days} day${days === 1 ? "" : "s"} left. Submit a day early.` },
+    {
+      level: "ok",
+      label: "Follow the instructions",
+      detail: `Check ${attachments ? `all ${attachments} attachment${attachments === 1 ? "" : "s"}` : "the notice"} for required forms, page limits and how to submit (email or portal).`,
+    },
+  ];
+}
+
+export function ProposalTab({ deal }: { deal: Deal }) {
+  const updateDeal = useApp((s) => s.updateDeal);
+  const setTab = useApp((s) => s.setTab);
+  const setView = useApp((s) => s.setView);
+  const say = useApp((s) => s.say);
+  const claude = useApp((s) => Boolean(s.status?.claude));
+  const draft = useDraft();
+  const [editing, setEditing] = useState(false);
+  const paper = useRef<HTMLDivElement>(null);
+  const checks = useReadiness(deal);
+  const text = draft.busy ? draft.text : (deal.proposal ?? "");
+  const submitted = deal.stage === "submitted" || deal.stage === "won" || deal.stage === "lost";
+
+  async function generate() {
+    setEditing(false);
+    const out = await draft.run("proposal", deal);
+    if (out) updateDeal(deal.id, (d) => ({ ...d, proposal: out }));
+  }
+
+  return (
+    <div className="space-y-10">
+      <Section title="Before you submit" subtitle="A quick check so nothing gets you disqualified.">
+        <Card className="divide-y divide-line">
+          {checks.map((c) => (
+            <div key={c.label} className="flex items-start gap-3 px-3.5 py-2.5">
+              <LevelIcon level={c.level} className="mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-ink">{c.label}</div>
+                <div className="text-xs text-ink-2">{c.detail}</div>
+              </div>
+              {c.fix && (
+                <Button size="sm" variant="ghost" onClick={() => (c.fix!.settings ? setView("settings") : setTab(c.fix!.tab!))}>
+                  {c.fix.label}
+                </Button>
+              )}
+            </div>
+          ))}
+        </Card>
+      </Section>
+
+      <Section
+        title="Proposal"
+        subtitle={claude ? "Claude drafts it from the notice, your price and your company profile. Edit before sending." : "A fill-in-the-blanks draft from your price and profile. Add ANTHROPIC_API_KEY for a tailored one."}
+        actions={
+          <>
+            {draft.busy ? (
+              <Button size="sm" onClick={draft.stop}>
+                <Square className="size-3.5" /> Stop
+              </Button>
+            ) : (
+              <Button size="sm" variant={deal.proposal ? "secondary" : "primary"} onClick={() => void generate()}>
+                <Sparkles className="size-3.5" /> {deal.proposal ? "Rewrite" : claude ? "Draft with Claude" : "Fill in a template"}
+              </Button>
+            )}
+            {deal.proposal && !draft.busy && (
+              <>
+                <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
+                  {editing ? "Preview" : "Edit"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => copyText(deal.proposal!, say)} aria-label="Copy proposal">
+                  <Copy className="size-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => downloadText(`proposal-${slug(deal.opportunity.title)}.md`, deal.proposal!)} aria-label="Download proposal">
+                  <Download className="size-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditing(false);
+                    // Wait a tick so the preview is rendered if we were editing.
+                    setTimeout(() => {
+                      if (paper.current && !printHtml(paper.current.innerHTML, deal.opportunity.title)) say("Allow pop-ups to print or save as PDF.");
+                    }, 50);
+                  }}
+                  aria-label="Print or save as PDF"
+                >
+                  <Printer className="size-3.5" />
+                </Button>
+              </>
+            )}
+          </>
+        }
+      >
+        {draft.error && <ErrorNote>{draft.error}</ErrorNote>}
+        {!text && !draft.busy ? (
+          <Empty title="No proposal yet">Set your price and pick a subcontractor first, then draft the proposal here.</Empty>
+        ) : editing && !draft.busy ? (
+          <TextArea
+            value={deal.proposal ?? ""}
+            onChange={(e) => updateDeal(deal.id, (d) => ({ ...d, proposal: e.target.value }))}
+            rows={28}
+            aria-label="Proposal"
+            className="font-mono text-[13px]"
+          />
+        ) : (
+          <div className="rounded-xl border border-line bg-white px-6 py-6 text-[13.5px] text-neutral-900 shadow-sm sm:px-10 sm:py-8 dark:bg-panel dark:text-ink">
+            {draft.busy && !text && (
+              <div className="flex items-center gap-2 text-ink-3">
+                <Loader2 className="size-4 animate-spin" /> Drafting… this can take a minute.
+              </div>
+            )}
+            <div ref={paper}>
+              <Markdown source={text} />
+            </div>
+          </div>
+        )}
+        {deal.proposal && !draft.busy && <Note>Read it start to finish and replace every [bracketed] placeholder before you send it.</Note>}
+      </Section>
+
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        <div className="flex-1">
+          <div className="text-sm font-semibold text-ink">
+            {submitted ? "Submitted" : "Ready to send?"} {submitted && <Badge tone={deal.stage === "won" ? "good" : deal.stage === "lost" ? "bad" : "accent"}>{deal.stage}</Badge>}
+          </div>
+          <div className="text-xs text-ink-2">
+            {submitted
+              ? deal.submittedAt
+                ? `Sent ${formatDate(deal.submittedAt)}. Record the result when you hear back.`
+                : "Record the result when you hear back."
+              : "Submit the way the notice says (usually email to the contracting officer or a portal), then mark it here."}
+          </div>
+        </div>
+        {submitted ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant={deal.stage === "won" ? "primary" : "secondary"} onClick={() => updateDeal(deal.id, (d) => ({ ...d, stage: "won" }))}>
+              <Trophy className="size-3.5" /> Won
+            </Button>
+            <Button size="sm" variant={deal.stage === "lost" ? "danger" : "secondary"} onClick={() => updateDeal(deal.id, (d) => ({ ...d, stage: "lost" }))}>
+              <ThumbsDown className="size-3.5" /> Lost
+            </Button>
+          </div>
+        ) : (
+          <Button variant="primary" onClick={() => updateDeal(deal.id, (d) => ({ ...d, stage: "submitted", submittedAt: new Date().toISOString() }))}>
+            <Send className="size-4" /> Mark as submitted
+          </Button>
+        )}
+      </Card>
+    </div>
+  );
+}

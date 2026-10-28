@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local data (your pipeline, quotes, drafts) and secrets
+.data/
+.env
+.env.local
+.tmp/
+
+.DS_Store
+npm-debug.log*
