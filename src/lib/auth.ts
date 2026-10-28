@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { nextCookies } from "better-auth/next-js";
 import { DATA_DIR, dataPath } from "./data-dir";
@@ -30,8 +30,8 @@ function authSecret(): string {
   }
 }
 
-function createAuth() {
-  return betterAuth({
+function authOptions() {
+  return {
     database: getDb(),
     secret: authSecret(),
     emailAndPassword: { enabled: true, minPasswordLength: 8, autoSignIn: true },
@@ -47,19 +47,28 @@ function createAuth() {
       },
     },
     plugins: [nextCookies()],
-  });
+  } satisfies BetterAuthOptions;
 }
 
-const g = globalThis as unknown as { __kontractAuth?: ReturnType<typeof createAuth>; __kontractAuthReady?: Promise<void> };
+const g = globalThis as unknown as {
+  __kontractAuthOptions?: ReturnType<typeof authOptions>;
+  __kontractAuth?: ReturnType<typeof createAuth>;
+  __kontractAuthReady?: Promise<void>;
+};
+
+const createAuth = () => betterAuth((g.__kontractAuthOptions ??= authOptions()));
 
 /** Created on first use, so `next build` never opens the database or writes a secret. */
 export function getAuth() {
   return (g.__kontractAuth ??= createAuth());
 }
 
-/** Create or update Better Auth's tables once per server process. */
+/**
+ * Create or update Better Auth's tables once per server process. Runs before
+ * the auth instance exists, which otherwise logs a schema mismatch on a new database.
+ */
 export function ensureAuthReady(): Promise<void> {
-  g.__kontractAuthReady ??= getMigrations(getAuth().options)
+  g.__kontractAuthReady ??= getMigrations((g.__kontractAuthOptions ??= authOptions()))
     .then(({ runMigrations }) => runMigrations())
     .catch((err) => {
       g.__kontractAuthReady = undefined;
