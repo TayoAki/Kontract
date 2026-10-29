@@ -100,7 +100,7 @@ function Toast() {
   }, [toast, action, say]);
   if (!toast) return null;
   return (
-    <div role="status" className="fixed bottom-20 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-panel px-4 py-2.5 text-sm font-medium text-ink shadow-lg md:bottom-10">
+    <div role="status" className="animate-enter fixed bottom-20 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-panel px-4 py-2.5 text-sm font-medium text-ink shadow-lg md:bottom-10">
       <span className="min-w-0">{toast}</span>
       {action && (
         <button

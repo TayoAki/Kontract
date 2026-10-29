@@ -63,7 +63,7 @@ export function AlertsView() {
             .filter(([, list]) => list.length > 0)
             .map(([title, list]) => (
               <section key={title}>
-                <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">{title}</h2>
+                <h2 className="mb-2 text-[13px] font-medium text-ink">{title}</h2>
                 <ul className="divide-y divide-line rounded-xl border border-line bg-panel">
                   {list.map((d) => (
                     <Row key={d.id} deal={d} />

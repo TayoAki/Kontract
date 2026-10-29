@@ -144,11 +144,9 @@ export function HomeView() {
             const isToday = d.day === today.day;
             return (
               <Card key={d.day} className={cx("flex flex-col p-3", isToday && "border-accent/50 bg-accent-soft/40")}>
-                <div className={cx("text-[11px] font-semibold tracking-wide uppercase", isToday ? "text-accent" : "text-ink-3")}>
-                  {d.day}
-                  {isToday && " · today"}
-                </div>
-                <div className="mt-1 text-[13px] font-semibold text-ink">{d.task}</div>
+                <h3 className="text-[13px] font-semibold text-ink">
+                  <span className={isToday ? "text-accent-ink" : "text-ink-2"}>{isToday ? `${d.day} (today)` : d.day}:</span> {d.task}
+                </h3>
                 <p className="mt-1 flex-1 text-xs leading-snug text-ink-2">{d.detail}</p>
                 {isToday && (
                   // With no bids yet, every day starts with finding one.
@@ -161,14 +159,16 @@ export function HomeView() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6">
-          <Stat label="Open bids" value={open} hint="Found, sourcing or quoted" />
-          <Stat label="Submitted this month" value={submittedThisMonth} hint="More bids, more wins" />
-          <Stat label="Won" value={won.length} tone={won.length ? "good" : undefined} />
-          <Stat label="Win rate" value={decided ? pct(won.length / decided) : "—"} hint={decided ? `${won.length} of ${decided} decided` : "No results yet"} />
-          <Stat label="Value submitted" value={money(valueSubmitted, { compact: true })} />
-          <Stat label="Profit from wins" value={money(profitWon, { compact: true })} tone={profitWon > 0 ? "good" : undefined} hint="Over the full contracts" />
-        </div>
+        {deals.length > 0 && (
+        <Card className="grid grid-cols-2 gap-px overflow-hidden bg-line md:grid-cols-3 lg:grid-cols-6">
+          <Stat flat label="Open bids" value={open} hint="Found, sourcing or quoted" />
+          <Stat flat label="Submitted this month" value={submittedThisMonth} hint="More bids, more wins" />
+          <Stat flat label="Won" value={won.length} tone={won.length ? "good" : undefined} />
+          <Stat flat label="Win rate" value={decided ? pct(won.length / decided) : "—"} hint={decided ? `${won.length} of ${decided} decided` : "No results yet"} />
+          <Stat flat label="Value submitted" value={money(valueSubmitted, { compact: true })} />
+          <Stat flat label="Profit from wins" value={money(profitWon, { compact: true })} tone={profitWon > 0 ? "good" : undefined} hint="Over the full contracts" />
+        </Card>
+        )}
 
         <section>
           <div className="mb-3 flex items-end justify-between">

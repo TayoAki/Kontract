@@ -52,7 +52,7 @@ function List({ title, items, tone }: { title: string; items: string[]; tone?: "
   if (items.length === 0) return null;
   return (
     <div>
-      <div className={cx("mb-1.5 text-xs font-semibold tracking-wide uppercase", tone === "warn" ? "text-warn" : "text-ink-3")}>{title}</div>
+      <div className={cx("mb-1.5 text-[13px] font-medium", tone === "warn" ? "text-warn" : "text-ink")}>{title}</div>
       <ul className="space-y-1 text-[13px] text-ink-2">
         {items.map((it) => (
           <li key={it} className="flex gap-2">
@@ -156,11 +156,12 @@ export function OverviewTab({ deal }: { deal: Deal }) {
           <div className="flex gap-2">
             <Button
               size="sm"
+              variant={tracked ? "secondary" : "primary"}
               aria-pressed={tracked}
               title={tracked ? "In My bids. Click to remove it (you can undo)." : "Save it to My bids"}
               onClick={() => (tracked ? void untrack(deal.id) : track(deal.id))}
             >
-              <Star className={cx("size-3.5", tracked && "fill-current text-warn")} /> {tracked ? "In My bids" : "Track bid"}
+              <Star className={cx("size-3.5", tracked && "fill-current text-accent")} /> {tracked ? "In My bids" : "Track bid"}
             </Button>
             <a
               href={o.samUrl}

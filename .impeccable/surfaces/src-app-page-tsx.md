@@ -19,7 +19,7 @@ STORY: A prime sees what's due, opens a bid, prices it, gets quotes from subs an
 
 FIRST VIEWPORT: Find opportunities at 1440 wide. A white icon rail at left with the active view tinted green. A white list column with search and filters, the selected notice tinted. The bid's tab track (muted, white active tab) above its title, facts and green primary action, with the bid snapshot column at right. The status line along the bottom.
 
-FORM: The standing exit, the category canon, chosen by the owner in plain words ("make it feel like shadcn"); the reference product is shadcn/ui. seed: none (canon chosen by the owner; no roll).
+FORM: The standing exit, the category canon, chosen by the owner in plain words ("make it feel like shadcn"); the reference product is shadcn/ui. seed:6bd86d33b7b0966d (dealt while checking the tool; superseded by the owner-chosen canon, shadcn/ui).
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 

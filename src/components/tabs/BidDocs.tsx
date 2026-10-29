@@ -196,7 +196,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
         {facts.length > 0 ? <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">{facts}</dl> : <p className="text-[13px] text-ink-2">No budget, bonds, dates or sizes stated in what we could read.</p>}
         {d.requirements.length > 0 && (
           <div>
-            <div className="mb-1.5 text-xs font-semibold tracking-wide text-ink-3 uppercase">What the job requires</div>
+            <div className="mb-1.5 text-[13px] font-medium text-ink">What the job requires</div>
             <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
               {d.requirements.map((q) => (
                 <li key={q.value} className="text-[13px] text-ink-2">
@@ -211,7 +211,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
           <div className="grid gap-4 sm:grid-cols-2">
             {d.forms.length > 0 && (
               <div>
-                <div className="mb-1.5 text-xs font-semibold tracking-wide text-ink-3 uppercase">Fill in and send back</div>
+                <div className="mb-1.5 text-[13px] font-medium text-ink">Fill in and send back</div>
                 <ul className="space-y-1 text-[13px] text-ink-2">
                   {d.forms.map((f) => (
                     <li key={f} className="flex gap-2">
@@ -223,7 +223,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
             )}
             {d.priceForm && (
               <div>
-                <div className="mb-1.5 text-xs font-semibold tracking-wide text-ink-3 uppercase">The price form asks for</div>
+                <div className="mb-1.5 text-[13px] font-medium text-ink">The price form asks for</div>
                 <p className="text-[13px] text-ink-2">
                   {d.priceForm.rows.slice(0, 8).join(" · ")}
                   {d.priceForm.rows.length > 8 && <span className="text-ink-3"> · and {d.priceForm.rows.length - 8} more</span>}
@@ -278,7 +278,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
               ].map(([title, items]) =>
                 (items as string[]).length ? (
                   <div key={title as string}>
-                    <div className={cx("mb-1 text-xs font-semibold tracking-wide uppercase", title === "Risks" ? "text-warn" : "text-ink-3")}>{title as string}</div>
+                    <div className={cx("mb-1 text-[13px] font-medium", title === "Risks" ? "text-warn" : "text-ink-3")}>{title as string}</div>
                     <ul className="space-y-1 text-[13px] text-ink-2">
                       {(items as string[]).map((x) => (
                         <li key={x}>{x}</li>
@@ -295,7 +295,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
       </Card>
 
       <div>
-        <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
+        <div className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-ink">
           Attachments <Badge>{d.documents.length}</Badge>
         </div>
         {d.documents.length ? (

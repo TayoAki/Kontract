@@ -203,9 +203,10 @@ export function Chip({ active, onClick, children }: { active?: boolean; onClick?
   );
 }
 
-export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "good" | "bad" }) {
+/** A number with its label. `flat` drops the card chrome, for cells inside one shared card. */
+export function Stat({ label, value, hint, tone, flat }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "good" | "bad"; flat?: boolean }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-3.5 py-3 shadow-xs">
+    <div className={cx("bg-panel px-3.5 py-3", !flat && "rounded-xl border border-line shadow-xs")}>
       <div className="text-xs text-ink-2">{label}</div>
       <div className={cx("mt-1 text-lg font-semibold tabular-nums", tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : "text-ink")}>{value}</div>
       {hint && <div className="mt-0.5 text-[11px] text-ink-3">{hint}</div>}

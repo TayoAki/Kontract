@@ -66,6 +66,28 @@ body {
   color: var(--ink);
 }
 
+/* Keyboard focus looks the same on every control: a solid green ring. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Dialogs and notices fade and lift in, quickly. */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+@utility animate-enter {
+  animation: enter 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter {
+    animation: none;
+  }
+}
+
 /* Thin, quiet scrollbars inside panels */
 .scroll-thin {
   scrollbar-width: thin;

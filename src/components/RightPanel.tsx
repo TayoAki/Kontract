@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, ChevronRight, Star } from "lucide-react";
+import { ArrowRight, Check, ChevronRight } from "lucide-react";
 import { bidTotals, vsAnchor } from "@/lib/bid-math";
 import { budgetLabel } from "@/lib/bid-details";
 import { STAGES } from "@/lib/deal";
@@ -80,7 +80,6 @@ function PriceChart({ low, high, median, yours, anchor, perYear }: { low: number
 
 export function RightPanel({ deal }: { deal: Deal }) {
   const tracked = useIsTracked(deal.id);
-  const track = useApp((s) => s.track);
   const updateDeal = useApp((s) => s.updateDeal);
   const setTab = useApp((s) => s.setTab);
   const pricing = useApp((s) => s.pricing[deal.id]);
@@ -108,7 +107,7 @@ export function RightPanel({ deal }: { deal: Deal }) {
           <h2 className="text-sm font-semibold text-ink">Bid snapshot</h2>
           <p className="text-xs text-ink-3">{tracked ? "Saved to My bids" : "Not tracked yet"}</p>
         </div>
-        {tracked ? (
+        {tracked && (
           <Select
             value={deal.stage}
             onChange={(e) => updateDeal(deal.id, (d) => ({ ...d, stage: e.target.value as Stage }))}
@@ -121,10 +120,6 @@ export function RightPanel({ deal }: { deal: Deal }) {
               </option>
             ))}
           </Select>
-        ) : (
-          <Button size="sm" variant="primary" onClick={() => track(deal.id)}>
-            <Star className="size-3.5" /> Track
-          </Button>
         )}
       </div>
 

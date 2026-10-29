@@ -356,7 +356,7 @@ function OutreachModal({ deal, sub, onClose }: { deal: Deal; sub: Subcontractor;
       aria-label={`Outreach for ${sub.name}`}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-lg border border-line bg-panel p-0 text-ink shadow-lg backdrop:bg-black/40"
+      className="animate-enter m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-lg border border-line bg-panel p-0 text-ink shadow-lg backdrop:bg-black/40"
     >
       <div className="flex max-h-[85dvh] flex-col">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
@@ -761,9 +761,10 @@ function BenchSubs({ deal, onAdd }: { deal: Deal; onAdd: (f: Found & { trade?: s
               key={c.id}
               size="sm"
               variant={added ? "ghost" : "secondary"}
-              disabled={added}
-              onClick={() => onAdd({ name: c.company, phone: c.phone, email: c.email, website: c.website, license: c.license, source: "bench", trade: c.trade, crmId: c.id })}
-              title={crmStageLabel(c.stage)}
+              aria-disabled={added || undefined}
+              onClick={() => !added && onAdd({ name: c.company, phone: c.phone, email: c.email, website: c.website, license: c.license, source: "bench", trade: c.trade, crmId: c.id })}
+              title={added ? "Already on your shortlist" : crmStageLabel(c.stage)}
+              className={added ? "cursor-default text-ink-2 hover:bg-transparent hover:text-ink-2" : undefined}
             >
               {added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />} {c.company}
               <span className="text-ink-3">· {crmStageLabel(c.stage)}</span>
