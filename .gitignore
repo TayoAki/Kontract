@@ -12,3 +12,9 @@ next-env.d.ts
 
 .DS_Store
 npm-debug.log*
+
+# impeccable: the engine binary is re-downloaded (checksum-verified) on first run,
+# live-server state is per machine, and its auto-run hooks stay a local choice.
+.claude/skills/impeccable/scripts/bin/
+.impeccable/live/
+.claude/settings.local.json
