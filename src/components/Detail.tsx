@@ -2,6 +2,7 @@
 
 import { BarChart3, FileSignature, Info, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+import { formatDate } from "@/lib/format";
 import type { Deal } from "@/lib/types";
 import { RightPanel } from "./RightPanel";
 import { useApp, type Tab } from "./state";
@@ -50,11 +51,20 @@ export function Detail({ deal, listButton }: { deal: Deal; listButton?: ReactNod
                 <span className="truncate max-md:hidden">{label}</span>
                 {/* On phones only the active tab shows its name; the rest are icons. */}
                 <span className={cx("truncate md:hidden", tab !== id && "max-sm:sr-only")}>{short}</span>
-                {counts[id] && <span className="rounded bg-accent-soft px-1 text-[10px] leading-4 text-accent-ink">{counts[id]}</span>}
+                {counts[id] && <span className="rounded bg-accent-soft px-1 text-[11px] leading-4 text-accent-ink">{counts[id]}</span>}
               </button>
             ))}
           </div>
         </div>
+        {/* Overview carries the title itself; the other tabs keep it in view so you know which bid you're pricing. */}
+        {tab !== "overview" && (
+          <div className="flex min-w-0 items-baseline gap-2 border-b border-line bg-panel px-4 py-1.5 text-[13px] sm:px-6">
+            <span className="min-w-0 truncate font-medium text-ink" title={deal.opportunity.title}>
+              {deal.opportunity.title}
+            </span>
+            {deal.opportunity.responseDeadline && <span className="shrink-0 text-ink-2">Due {formatDate(deal.opportunity.responseDeadline)}</span>}
+          </div>
+        )}
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-4xl px-4 py-5 sm:px-6">
             {tab === "overview" && <OverviewTab deal={deal} />}

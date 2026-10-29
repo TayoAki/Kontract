@@ -14,7 +14,7 @@ interface Loaded {
 }
 
 /** The page a subcontractor opens from a quote link: the scope, the line items, and a form for their prices. */
-export function QuotePage({ token }: { token: string }) {
+export function QuotePage({ token, preview = false }: { token: string; preview?: boolean }) {
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -29,7 +29,7 @@ export function QuotePage({ token }: { token: string }) {
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/q/${encodeURIComponent(token)}`)
+    fetch(`/api/q/${encodeURIComponent(token)}${preview ? "?preview=1" : ""}`)
       .then(async (res) => {
         const body = (await res.json()) as Loaded & { error?: string };
         if (!res.ok) throw new Error(body.error || "Couldn't open this quote request.");
@@ -47,14 +47,14 @@ export function QuotePage({ token }: { token: string }) {
         }
       })
       .catch((err: Error) => setError(err.message));
-  }, [token]);
+  }, [token, preview]);
 
   const s = data?.snapshot;
   const total = useMemo(() => (s ? quoteTotal(s, Object.entries(prices).map(([id, unitPrice]) => ({ id, unitPrice }))) : 0), [s, prices]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!s) return;
+    if (!s || preview) return;
     setBusy(true);
     setFormError(null);
     try {
@@ -97,6 +97,11 @@ export function QuotePage({ token }: { token: string }) {
   return (
     <Shell>
       <div className="space-y-6">
+        {preview && (
+          <div role="note" className="rounded-xl border border-dashed border-line-strong bg-panel px-4 py-3 text-[13px] text-ink-2">
+            <span className="font-semibold text-ink">Preview.</span> This is exactly what {s.subName} sees. Opening it here doesn&apos;t count as them opening it, and sending is turned off.
+          </div>
+        )}
         {sentAt && (
           <div role="status" className="flex items-start gap-3 rounded-xl bg-good-soft px-4 py-3 text-good">
             <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
@@ -123,6 +128,20 @@ export function QuotePage({ token }: { token: string }) {
           </div>
           <p className="text-[13.5px] leading-relaxed text-ink">{s.summary}</p>
         </header>
+
+        <section className="space-y-2">
+          <h2 className="text-[15px] font-semibold text-ink">Scope of work</h2>
+          <Card className="p-4">
+            <Markdown source={s.scope} />
+          </Card>
+          {s.requirements.length > 0 && (
+            <ul className="list-disc space-y-0.5 pl-5 text-[13px] text-ink-2">
+              {s.requirements.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <form onSubmit={submit} className="space-y-6">
           <Card className="overflow-hidden">
@@ -185,24 +204,11 @@ export function QuotePage({ token }: { token: string }) {
           </Card>
 
           {formError && <ErrorNote>{formError}</ErrorNote>}
-          <Button type="submit" variant="primary" busy={busy} className="w-full sm:w-auto">
+          <Button type="submit" variant="primary" busy={busy} disabled={preview} className="w-full sm:w-auto">
             <Send className="size-4" /> {sentAt ? "Send updated quote" : "Send quote"}
           </Button>
         </form>
 
-        <section className="space-y-2">
-          <h2 className="text-[15px] font-semibold text-ink">Scope of work</h2>
-          <Card className="p-4">
-            <Markdown source={s.scope} />
-          </Card>
-          {s.requirements.length > 0 && (
-            <ul className="list-disc space-y-0.5 pl-5 text-[13px] text-ink-2">
-              {s.requirements.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
-          )}
-        </section>
 
         <footer className="space-y-1 border-t border-line pt-4 text-[13px] text-ink-2">
           <div>

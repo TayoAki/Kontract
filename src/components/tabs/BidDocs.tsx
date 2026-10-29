@@ -290,7 +290,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
             </div>
           </div>
         ) : !claude ? (
-          <Note>Add ANTHROPIC_API_KEY to have Claude list the scope item by item (about $0.20 a bid). The facts above are read without it.</Note>
+          <Note>The facts above come straight from the documents. An item-by-item scope list needs AI reading, which is off on this site (see Settings).</Note>
         ) : null}
       </Card>
 

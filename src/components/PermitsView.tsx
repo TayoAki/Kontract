@@ -97,13 +97,14 @@ function PermitList() {
               role="radio"
               aria-checked={query.days === d}
               onClick={() => setQuery({ days: d })}
-              className={cx("h-7 rounded-md text-xs font-medium transition-colors", query.days === d ? "bg-panel text-ink shadow-sm" : "text-ink-2 hover:text-ink")}
+              className={cx("h-7 rounded-md text-xs font-medium transition-colors pointer-coarse:h-9", query.days === d ? "bg-panel text-ink shadow-sm" : "text-ink-2 hover:text-ink")}
             >
               {d === 1 ? "Today" : `${d}d`}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap gap-1.5" aria-label="Trade">
+        {/* One swipeable row on phones, so the permits themselves stay on screen. */}
+        <div className="scroll-thin flex flex-wrap gap-1.5 max-md:-mx-3 max-md:flex-nowrap max-md:overflow-x-auto max-md:px-3 max-md:pb-1 [&>*]:shrink-0" aria-label="Trade">
           <Chip active={!query.trade} onClick={() => setQuery({ trade: undefined })}>
             All trades
           </Chip>
@@ -126,7 +127,7 @@ function PermitList() {
           type="button"
           onClick={() => setMore((v) => !v)}
           aria-expanded={more}
-          className="flex h-8 w-full items-center justify-between rounded-lg bg-panel-2 px-2.5 text-xs text-ink-2 hover:text-ink"
+          className="flex h-8 w-full items-center justify-between rounded-lg bg-panel-2 px-2.5 text-xs text-ink-2 hover:text-ink pointer-coarse:h-10"
         >
           <span className="truncate">
             {[query.leadsOnly ? "Leads only" : "All permits", query.hasContractor && "Names a contractor", query.minStrength && `${STRENGTH_LABEL[query.minStrength]}+`, query.residentialOnly && "Residential", query.minValue && `${money(query.minValue, { compact: true })}+`, query.zip, query.q && `“${query.q}”`]

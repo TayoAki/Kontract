@@ -5,8 +5,9 @@ import { openQuote, submitQuote } from "@/lib/quotes";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
-  const quote = openQuote((await params).token);
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const preview = new URL(req.url).searchParams.get("preview") === "1";
+  const quote = openQuote((await params).token, { preview });
   return quote ? json(quote) : fail("This quote link doesn't exist or has been removed.", 404);
 }
 

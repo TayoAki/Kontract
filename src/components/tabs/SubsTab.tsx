@@ -1,13 +1,16 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { Check, ClipboardList, Copy, ExternalLink, FileDown, Globe, Link2, Loader2, MapPin, MessageSquareText, Phone, Plus, Printer, Search, Sparkles, Square, Star, Trash2, Users, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, ClipboardList, Copy, ExternalLink, Eye, FileDown, Globe, Link2, Loader2, MapPin, MessageSquareText, Phone, Plus, Printer, Search, Sparkles, Square, Star, Trash2, Users, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { companyKey, crmStageLabel } from "@/lib/crm";
 import { formatDate, money, placeLabel, uid } from "@/lib/format";
+import { formatPhone } from "@/lib/lead-share";
+import { findPlaceholders } from "@/lib/placeholders";
 import { workById, workForJob } from "@/lib/permit-trades";
 import { recipients } from "@/lib/pricing-stats";
 import { rulesBreakdown } from "@/lib/rules";
+import { sowTemplate } from "@/lib/templates";
 import type { Deal, PermitContractor, SubStatus, Subcontractor, Vetting, WorkId } from "@/lib/types";
 import { copyDoc, downloadWord, printHtml, slug } from "../doc-actions";
 import { DocEditor } from "../DocEditor";
@@ -172,7 +175,7 @@ function FoundCard({ f, added, onAdd }: { f: Found; added: boolean; onAdd: () =>
         <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
           {f.phone && (
             <a href={`tel:${f.phone}`} className="inline-flex items-center gap-1 text-ink-2 hover:text-accent">
-              <Phone className="size-3" /> {f.phone}
+              <Phone className="size-3" /> {formatPhone(f.phone)}
             </a>
           )}
           {f.website && (
@@ -310,7 +313,13 @@ function FindCompanies({ deal, onAdd }: { deal: Deal; onAdd: (f: Found) => void 
                 >
                   <ExternalLink className="size-3.5" />
                 </a>
-                <Button size="sm" variant="ghost" disabled={names.has(w.name.toLowerCase())} onClick={() => onAdd({ name: w.name, source: "usaspending", notes: `${w.awards} past federal award(s), ${money(w.total)}` })}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={names.has(w.name.toLowerCase())}
+                  aria-label={names.has(w.name.toLowerCase()) ? `${w.name} is on your shortlist` : `Add ${w.name} to the shortlist`}
+                  onClick={() => onAdd({ name: w.name, source: "usaspending", notes: `${w.awards} past federal award(s), ${money(w.total)}` })}
+                >
                   {names.has(w.name.toLowerCase()) ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
                 </Button>
               </li>
@@ -328,14 +337,28 @@ function OutreachModal({ deal, sub, onClose }: { deal: Deal; sub: Subcontractor;
   const draft = useDraft();
   const say = useApp((s) => s.say);
   const { run } = draft;
+  const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     void run("outreach", deal, sub.id);
     // Run once when opened.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A native modal: Esc closes it and the page behind can't be tabbed into. Focus goes back to the button that opened it.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current?.showModal();
+    return () => opener?.focus();
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" role="dialog" aria-modal="true" aria-label={`Outreach for ${sub.name}`} onClick={onClose}>
-      <div className="flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-line bg-panel shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <dialog
+      ref={ref}
+      aria-label={`Outreach for ${sub.name}`}
+      onClose={onClose}
+      onClick={(e) => e.target === ref.current && onClose()}
+      className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-xl border border-line bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/30"
+    >
+      <div className="flex max-h-[85dvh] flex-col">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div>
             <div className="text-sm font-semibold text-ink">Email &amp; call script</div>
@@ -360,7 +383,7 @@ function OutreachModal({ deal, sub, onClose }: { deal: Deal; sub: Subcontractor;
           <Markdown source={draft.text} />
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -424,7 +447,7 @@ function SubCard({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
             )}
             {sub.phone && (
               <a href={`tel:${sub.phone}`} className="hover:text-accent">
-                {sub.phone}
+                {formatPhone(sub.phone)}
               </a>
             )}
             {sub.website && (
@@ -503,7 +526,17 @@ function SubCard({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
           <Button size="sm" onClick={() => setOutreach(true)}>
             <MessageSquareText className="size-3.5" /> Email &amp; script
           </Button>
-          <Button size="sm" variant="ghost" aria-label="Remove from shortlist" onClick={() => updateDeal(deal.id, (d) => ({ ...d, subs: d.subs.filter((s) => s.id !== sub.id) }))}>
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`Remove ${sub.name} from the shortlist`}
+            title="Remove from the shortlist (they stay on your bench)"
+            onClick={() => {
+              const hasWork = sub.quote || sub.quoteTotal || sub.notes?.trim();
+              if (hasWork && !window.confirm(`Remove ${sub.name}? Their quote and notes on this bid go with them.`)) return;
+              updateDeal(deal.id, (d) => ({ ...d, subs: d.subs.filter((s) => s.id !== sub.id) }));
+            }}
+          >
             <Trash2 className="size-3.5" />
           </Button>
         </div>
@@ -513,7 +546,7 @@ function SubCard({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
   );
 }
 
-const QUOTE_STATUS: Record<string, string> = { sent: "Link sent, not opened yet", viewed: "Opened, no quote yet", submitted: "Quote received" };
+const QUOTE_STATUS: Record<string, string> = { sent: "Link ready, not opened yet", viewed: "Opened, no quote yet", submitted: "Quote received" };
 
 /** Send the sub a link to quote online; their prices land in this bid. */
 function QuoteLink({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
@@ -521,8 +554,13 @@ function QuoteLink({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
   const req = useApp((s) => (sub.quoteToken ? s.quoteRequests[sub.quoteToken] : undefined));
   const profile = useApp((s) => s.profile);
   const say = useApp((s) => s.say);
+  const setView = useApp((s) => s.setView);
   const [busy, setBusy] = useState(false);
   const url = sub.quoteToken && typeof window !== "undefined" ? `${window.location.origin}/q/${sub.quoteToken}` : null;
+  // The sub sees your company name at the top of the page; blank reads as "A contractor".
+  const noCompany = !profile?.companyName?.trim();
+  // Blanks left in the scope would reach the sub as written.
+  const blanks = useMemo(() => (profile ? findPlaceholders(deal.sow?.trim() || sowTemplate(deal, profile)) : []), [deal, profile]);
 
   async function create(): Promise<string | null> {
     setBusy(true);
@@ -556,16 +594,35 @@ function QuoteLink({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
         {req ? QUOTE_STATUS[req.status] : url ? "Quote link made" : "Let them quote online"}
         {req?.submittedAt && ` · ${formatDate(req.submittedAt, { month: "short", day: "numeric", year: undefined, hour: "numeric", minute: "2-digit" })}`}
       </span>
-      <div className="ml-auto flex gap-1.5">
+      <div className="ml-auto flex flex-wrap gap-1.5">
+        {url && (
+          <a href={`${url}?preview=1`} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg px-2.5 text-xs font-medium text-ink-2 hover:bg-panel-2 hover:text-ink">
+            <Eye className="size-3.5" /> Preview
+          </a>
+        )}
         <Button size="sm" onClick={() => void copy()} busy={busy}>
           <Copy className="size-3.5" /> {url ? "Copy link" : "Get quote link"}
         </Button>
         {mail && (
-          <a href={mail} className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+          <a href={mail} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
             Email it
           </a>
         )}
       </div>
+      {noCompany && (
+        <p className="basis-full text-xs text-warn">
+          Your company name is blank, so the sub sees &ldquo;A contractor&rdquo;.{" "}
+          <button type="button" onClick={() => setView("settings")} className="font-medium underline underline-offset-2">
+            Add it in Settings
+          </button>
+        </p>
+      )}
+      {blanks.length > 0 && (
+        <p className="basis-full text-xs text-warn">
+          The scope still has {blanks.length === 1 ? "a blank" : `${blanks.length} blanks`} the sub will see: {blanks.slice(0, 3).join(", ")}
+          {blanks.length > 3 ? "…" : ""}. Fill {blanks.length === 1 ? "it" : "them"} in under step 1.
+        </p>
+      )}
     </div>
   );
 }
@@ -661,7 +718,7 @@ function PermitSubs({ deal, onAdd }: { deal: Deal; onAdd: (f: Found & { trade?: 
                     <div className="mt-0.5 truncate text-xs text-ink-3">{contractorDetail(c)}</div>
                     {c.phone && (
                       <a href={`tel:${c.phone}`} className="mt-1 inline-flex items-center gap-1 text-xs text-ink-2 hover:text-accent">
-                        <Phone className="size-3" /> {c.phone}
+                        <Phone className="size-3" /> {formatPhone(c.phone)}
                       </a>
                     )}
                   </div>

@@ -9,7 +9,7 @@ import { flushSaves, useApp } from "./state";
 import { Avatar, Badge, Button, Card, Input, Label, NumberInput, Section, TextArea } from "./ui";
 
 const FIELDS: { key: keyof CompanyProfile; label: string; hint?: string; placeholder?: string }[] = [
-  { key: "companyName", label: "Company name", hint: "A broad name works for any kind of contract", placeholder: "Natalie Services LLC" },
+  { key: "companyName", label: "Company name", hint: "A broad name works for any kind of contract", placeholder: "Your company LLC" },
   { key: "uei", label: "UEI", hint: "From your SAM.gov registration", placeholder: "12-character Unique Entity ID" },
   { key: "cage", label: "CAGE code", hint: "Also from SAM.gov", placeholder: "5 characters" },
   { key: "address", label: "Business address" },
@@ -20,34 +20,43 @@ const FIELDS: { key: keyof CompanyProfile; label: string; hint?: string; placeho
   { key: "website", label: "Website" },
 ];
 
+// What each connection does for the user, what happens without it, and (for
+// whoever runs the site) how to turn it on.
 const INTEGRATIONS = [
   {
     key: "sam" as const,
-    name: "SAM.gov opportunities",
-    env: "SAM_API_KEY (optional)",
-    what: "Every open federal notice from SAM.gov's free daily file. Kontract downloads it and searches it locally, with no key and no rate limit, and checks hourly for a new file.",
-    how: "Optional: add SAM_API_KEY (free at sam.gov → Profile → Public API Key) to list each notice's attachments here. Keys without a role allow about 10 requests a day; each notice costs one.",
+    name: "Federal opportunities",
+    what: "Every open notice from SAM.gov's free daily file, checked hourly. Attachments are read straight from SAM.gov.",
+    off: "",
+    setup: "Nothing to set up. SAM_API_KEY is only a fallback for attachment links (about 10 requests a day without a role).",
   },
   {
     key: "claude" as const,
-    name: "Claude",
-    env: "ANTHROPIC_API_KEY",
-    what: "Plain-English breakdowns, scopes of work, outreach scripts and proposals.",
-    how: "Create a key at platform.claude.com. Without it, Kontract uses fill-in templates.",
+    name: "AI reading and drafts",
+    what: "Plain-English breakdowns, item-by-item scope from bid documents, outreach scripts and proposals.",
+    off: "Off: drafts are fill-in templates and bids get a rules-based read.",
+    setup: "Set ANTHROPIC_API_KEY (from platform.claude.com) and restart.",
   },
   {
     key: "places" as const,
-    name: "Subcontractor search",
-    env: "GOOGLE_PLACES_API_KEY or APIFY_API_TOKEN",
+    name: "Local subcontractor search",
     what: "Real local businesses with ratings, phones and websites.",
-    how: "Google Places API (New) is fastest. Apify uses the compass/crawler-google-places actor.",
+    off: "Off: searches show sample businesses.",
+    setup: "Set GOOGLE_PLACES_API_KEY (Places API New) or APIFY_API_TOKEN and restart.",
+  },
+  {
+    key: "firecrawl" as const,
+    name: "Website reader",
+    what: "Reads a sub's website for licenses, phones and emails, and state or local bid pages for their documents.",
+    off: "Off: open sub websites and state or local bid pages yourself.",
+    setup: "Set FIRECRAWL_API_KEY and restart. Each page read costs one credit.",
   },
   {
     key: "usaspending" as const,
-    name: "USAspending.gov",
-    env: "none",
-    what: "Past award pricing and companies that already won similar work.",
-    how: "Public and free. Always on.",
+    name: "Past award pricing",
+    what: "What the government paid before and who won similar work, from USAspending.gov.",
+    off: "",
+    setup: "Public and free. Always on.",
   },
 ];
 
@@ -155,41 +164,22 @@ export function SettingsView() {
           </Card>
         </Section>
 
-        <Section title="Connections" subtitle="Add keys to .env.local next to package.json, then restart the app.">
+        <Section title="What's connected" subtitle="What Kontract can do on this site. Whoever runs the site turns these on.">
           <Card className="divide-y divide-line">
             {INTEGRATIONS.map((i) => {
-              const on =
-                i.key === "usaspending" ? true : i.key === "places" ? Boolean(status?.places) : i.key === "sam" ? Boolean(status?.samData?.count) : Boolean(status?.[i.key]);
               const sam = status?.samData;
+              const on = i.key === "usaspending" ? true : i.key === "places" ? Boolean(status?.places) : i.key === "sam" ? Boolean(sam?.count) : Boolean(status?.[i.key]);
               return (
                 <div key={i.key} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
-                  <div className="sm:w-48">
+                  <div className="flex items-center gap-2 sm:w-48 sm:flex-col sm:items-start sm:gap-1">
                     <div className="text-[13px] font-semibold text-ink">{i.name}</div>
-                    <Badge tone={on ? "good" : "neutral"} className="mt-1">
-                      {i.key === "sam"
-                        ? sam?.count
-                          ? `On · ${sam.count.toLocaleString()} notices`
-                          : sam?.refreshing
-                            ? "Downloading…"
-                            : "Not loaded"
-                        : on
-                          ? i.key === "places"
-                            ? `On · ${status?.places}`
-                            : i.key === "claude"
-                              ? `On · ${status?.model}`
-                              : "On"
-                          : "Not set"}
+                    <Badge tone={on ? "good" : "neutral"}>
+                      {i.key === "sam" ? (sam?.count ? `On · ${sam.count.toLocaleString()} notices` : sam?.refreshing ? "Downloading…" : "Not loaded") : on ? "On" : "Off"}
                     </Badge>
-                    {i.key === "sam" && (
-                      <Badge tone={status?.sam ? "good" : "neutral"} className="mt-1 ml-1">
-                        {status?.sam ? "Key set" : "No key"}
-                      </Badge>
-                    )}
                   </div>
                   <div className="flex-1 text-xs text-ink-2">
                     <p>{i.what}</p>
-                    <p className="mt-1 text-ink-3">{i.how}</p>
-                    {i.env !== "none" && <code className="mt-1.5 inline-block rounded bg-panel-2 px-1.5 py-0.5 font-mono text-[11px] text-ink-2">{i.env}</code>}
+                    {!on && i.off && <p className="mt-1 text-ink-3">{i.off}</p>}
                     {i.key === "sam" && (
                       <div className="mt-2 flex flex-wrap items-center gap-3">
                         <span className="text-ink-3">
@@ -205,6 +195,13 @@ export function SettingsView() {
                         </Button>
                       </div>
                     )}
+                    <details className="mt-1.5 text-ink-3">
+                      <summary className="w-max cursor-pointer rounded hover:text-ink-2 pointer-coarse:py-2">Site setup</summary>
+                      <p className="mt-1">
+                        {i.setup}
+                        {i.key === "claude" && status?.model && on && <> Using {status.model}.</>}
+                      </p>
+                    </details>
                   </div>
                 </div>
               );

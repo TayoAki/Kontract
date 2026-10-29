@@ -20,6 +20,7 @@ import {
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { ACTIVITY_KINDS, benchSummary, CRM_STAGES, crmStageLabel, followUpIn, followUpStatus, logActivity, subJobs, type JobOutcome, type SubJob } from "@/lib/crm";
 import { formatDate, money, pct } from "@/lib/format";
+import { formatPhone } from "@/lib/lead-share";
 import { subInvite } from "@/lib/permit-pitch";
 import { TRADES, WORK } from "@/lib/permit-trades";
 import type { CrmActivity, CrmContact, CrmStage, TradeId, WorkId } from "@/lib/types";
@@ -475,7 +476,7 @@ function ContactDetail({ c, jobs, listButton }: { c: CrmContact; jobs: SubJob[];
               <div className="mt-1 flex flex-wrap items-center gap-3 px-1 text-xs text-ink-2">
                 {c.phone && (
                   <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1 hover:text-accent">
-                    <Phone className="size-3" /> {c.phone}
+                    <Phone className="size-3" /> {formatPhone(c.phone)}
                   </a>
                 )}
                 {c.email && (

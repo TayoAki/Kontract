@@ -4,7 +4,7 @@ import { Check, Copy, ExternalLink, Globe, Mail, MapPin, Phone, Plus, Search, Se
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { crmStageLabel, findContact, followUpIn, logActivity } from "@/lib/crm";
 import { formatDate, money } from "@/lib/format";
-import { leadMessage, reachPlan } from "@/lib/lead-share";
+import { formatPhone, leadMessage, reachPlan } from "@/lib/lead-share";
 import { subInvite } from "@/lib/permit-pitch";
 import type { CrmContact, Permit, PermitContractor, TradeId } from "@/lib/types";
 import { PermitMarket, relDay, STRENGTH_LABEL, strengthTone, useTradeLabel } from "./PermitMarket";
@@ -101,7 +101,7 @@ function CandidateRow({ c, onBench, onAdd, onInvite, inviting }: { c: Candidate;
         <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
           {c.phone && (
             <a href={`tel:${c.phone}`} className="inline-flex items-center gap-1 text-ink-2 hover:text-accent">
-              <Phone className="size-3" /> {c.phone}
+              <Phone className="size-3" /> {formatPhone(c.phone)}
             </a>
           )}
           {c.website && (
@@ -188,7 +188,7 @@ function Recruit({ permit, trade, recipient, setRecipient }: { permit: Permit; t
             <Search className="size-3.5" /> {found ? "Search again" : `Find ${info?.plural ?? "companies"}`}
           </Button>
         </div>
-        {provider == null && !found && <p className="text-xs text-ink-3">Shows sample listings until GOOGLE_PLACES_API_KEY or APIFY_API_TOKEN is set.</p>}
+        {provider == null && !found && <p className="text-xs text-ink-3">These are sample listings: business search is off on this site.</p>}
         {error && <ErrorNote>{error}</ErrorNote>}
         {notice && <Note tone="warn">{notice}</Note>}
         {found && found.length === 0 && <p className="text-[13px] text-ink-2">No businesses found. Try a nearby city.</p>}
@@ -261,7 +261,7 @@ function Invite({ permit, trade, recipient }: { permit: Permit; trade: TradeId; 
           {recipient?.email && (
             <a
               href={`mailto:${recipient.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
-              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+              className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
             >
               <Mail className="size-3.5" /> Email
             </a>
@@ -278,7 +278,7 @@ function Invite({ permit, trade, recipient }: { permit: Permit; trade: TradeId; 
           {recipient ? (
             <span>
               To <span className="font-medium text-ink">{recipient.name}</span>
-              {recipient.phone ? ` · ${recipient.phone}` : ""}
+              {recipient.phone ? ` · ${formatPhone(recipient.phone)}` : ""}
             </span>
           ) : (
             <span>Press Invite on a company above to address it to them.</span>
@@ -421,12 +421,12 @@ function PassLead({ permit, trade }: { permit: Permit; trade: TradeId }) {
                 <Copy className="size-3.5" /> Copy message
               </Button>
               {made.email && (
-                <a href={`mailto:${made.email}?subject=${encodeURIComponent(made.subject)}&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                <a href={`mailto:${made.email}?subject=${encodeURIComponent(made.subject)}&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
                   <Mail className="size-3.5" /> Email
                 </a>
               )}
               {contact?.phone && (
-                <a href={`sms:${contact.phone}?&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                <a href={`sms:${contact.phone}?&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
                   <Phone className="size-3.5" /> Text
                 </a>
               )}

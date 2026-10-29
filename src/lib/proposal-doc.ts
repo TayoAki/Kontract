@@ -15,6 +15,8 @@ import {
   type ParagraphChild,
 } from "docx";
 
+export { findPlaceholders } from "./placeholders.ts";
+
 // The proposal as a Word file, built from the editor's document (ProseMirror
 // JSON): headings, paragraphs with bold/italic/links, bullet and numbered
 // lists, tables and rules. Agencies often ask for Word or PDF; PDF comes
@@ -27,17 +29,6 @@ export interface DocNode {
   content?: DocNode[];
   text?: string;
   marks?: { type: string; attrs?: Record<string, unknown> }[];
-}
-
-/** "[Your UEI]"-style blanks left to fill, in order, without repeats. Links ([text](url)) and checkboxes don't count. */
-export function findPlaceholders(text: string): string[] {
-  const out = new Set<string>();
-  for (const m of text.matchAll(/\[([^[\]\n]{2,120})\](?!\()/g)) {
-    const inner = m[1]!.replace(/\\+$/, "").trim();
-    if (/^[xX ]$/.test(inner) || /^\d+$/.test(inner)) continue;
-    out.add(`[${inner}]`);
-  }
-  return [...out];
 }
 
 const FONT = "Calibri";

@@ -116,7 +116,7 @@ function ProspectCard({ p, onStatus }: { p: Prospect; onStatus: (s: ProspectStat
               <a
                 href={`mailto:${email}?subject=${encodeURIComponent(p.outreach.subject)}&body=${encodeURIComponent(p.outreach.body)}`}
                 onClick={() => p.status === "new" && onStatus("contacted")}
-                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+                className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
               >
                 <Mail className="size-3.5" /> Open in email
               </a>
@@ -261,7 +261,7 @@ export function ProspectsView() {
                 {account?.plan === "free" ? " Free accounts get one a week; the daily plan gets one a day." : ""}
               </Note>
             )}
-            {!claude && <Note tone="warn">Claude isn&apos;t set up on this server (ANTHROPIC_API_KEY), so a run shows labeled samples.</Note>}
+            {!claude && <Note tone="warn">AI search is off on this site, so a run shows labeled sample prospects.</Note>}
             <p className="text-[11px] text-ink-3">
               Every prospect links to the page it came from. Emails are only shown when they&apos;re printed on a page the search read. Nothing is sent for you.
             </p>

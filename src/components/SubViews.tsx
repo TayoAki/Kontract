@@ -393,7 +393,7 @@ export function SubSettingsView() {
               </Button>
             )}
           </Card>
-          {!plans?.payments && <Note tone="warn">Payments aren&apos;t set up on this server yet (STRIPE_SECRET_KEY, STRIPE_PRICE_ID).</Note>}
+          {!plans?.payments && <Note>The daily plan isn&apos;t open for sign-up yet. Your free leads keep coming every Monday.</Note>}
         </Section>
 
         <Section title="Your leads">
@@ -445,7 +445,7 @@ export function SubSettingsView() {
                 <Toggle checked={form.digest ?? true} onChange={(digest) => setForm({ ...form, digest })}>
                   Email me my leads {account?.plan === "daily" ? "every morning" : "every Monday"}
                 </Toggle>
-                {!plans?.email && <p className="mt-1 text-xs text-ink-3">Email isn&apos;t set up on this server yet (RESEND_API_KEY), so leads are here in the app.</p>}
+                {!plans?.email && <p className="mt-1 text-xs text-ink-3">Lead emails aren&apos;t on for this site yet, so your leads are here in the app.</p>}
               </div>
               <div className="sm:col-span-2">
                 <Button type="submit" variant="primary" busy={busy}>

@@ -72,17 +72,20 @@ export function AuthScreen({ onSignedIn, join }: { onSignedIn: () => void; join?
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-10 max-md:items-start max-md:py-6">
       <div className="grid w-full max-w-4xl gap-8 md:grid-cols-[1.1fr_1fr] md:items-center">
-        <div>
-          <div className="mb-6 flex items-center gap-2.5">
-            <div className="grid size-9 place-items-center rounded-lg bg-accent text-base font-bold text-on-accent">K</div>
-            <span className="text-lg font-semibold text-ink">Kontract</span>
+        {/* On a phone the form comes right after the headline; the selling points follow it. */}
+        <div className="max-md:contents">
+          <div className="max-md:order-1">
+            <div className="mb-6 flex items-center gap-2.5 max-md:mb-4">
+              <div className="grid size-9 place-items-center rounded-lg bg-accent text-base font-bold text-on-accent">K</div>
+              <span className="text-lg font-semibold text-ink">Kontract</span>
+            </div>
+            <h1 className="text-2xl leading-tight font-semibold text-balance text-ink sm:text-3xl">
+              {mode === "signup" && role === "sub" ? "More jobs for your crew, without paying for leads." : "Find the work, line up the people, close the deal."}
+            </h1>
           </div>
-          <h1 className="text-2xl leading-tight font-semibold text-balance text-ink sm:text-3xl">
-            {mode === "signup" && role === "sub" ? "More jobs for your crew, without paying for leads." : "Find the work, line up the people, close the deal."}
-          </h1>
-          <ul className="mt-6 space-y-4">
+          <ul className="mt-6 space-y-4 max-md:order-3 max-md:mt-0">
             {(mode === "signup" && role === "sub" ? SUB_POINTS : PRIME_POINTS).map(({ icon: Icon, title, text }) => (
               <li key={title} className="flex gap-3">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-ink">
@@ -97,7 +100,7 @@ export function AuthScreen({ onSignedIn, join }: { onSignedIn: () => void; join?
           </ul>
         </div>
 
-        <Card className="p-6">
+        <Card className="p-6 max-md:order-2 max-sm:p-5">
           <h2 className="text-lg font-semibold text-ink">{mode === "signup" ? "Create your account" : "Sign in"}</h2>
           <p className="mt-1 text-[13px] text-ink-2">{mode === "signup" ? (role === "sub" ? "Free: 10 leads a week, no card." : "Free to start. Your bids and subs are private to you.") : "Welcome back."}</p>
           <form className="mt-5 space-y-3" onSubmit={submit}>

@@ -202,7 +202,7 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
               aria-selected={mode === m}
               onClick={() => setView(m)}
               className={cx(
-                "h-7 rounded-md text-xs font-medium transition-colors",
+                "h-7 rounded-md text-xs font-medium transition-colors pointer-coarse:h-9",
                 mode === m ? "bg-panel text-ink shadow-sm" : "text-ink-2 hover:text-ink",
               )}
             >
@@ -233,7 +233,7 @@ export function Sidebar({ mode }: { mode: "search" | "bids" }) {
               type="button"
               onClick={() => setShowFilters((v) => !v)}
               aria-expanded={showFilters}
-              className="flex h-8 w-full items-center justify-between rounded-lg bg-panel-2 px-2.5 text-xs text-ink-2 hover:text-ink"
+              className="flex h-8 w-full items-center justify-between rounded-lg bg-panel-2 px-2.5 text-xs text-ink-2 hover:text-ink pointer-coarse:h-10"
             >
               <span className="truncate">{filterSummary(filters)}</span>
               {showFilters ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}

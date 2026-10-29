@@ -17,6 +17,7 @@ function Dot({ on, label, title }: { on: boolean; label: string; title: string }
 
 export function BottomBar() {
   const status = useApp((s) => s.status);
+  const setView = useApp((s) => s.setView);
   const dueThisWeek = useApp(
     (s) =>
       Object.values(s.deals).filter((d) => {
@@ -26,48 +27,47 @@ export function BottomBar() {
   );
   const focus = todaysFocus();
   const account = useApp((s) => s.account);
+  // The bar is a desktop status line; on a phone the bottom tabs take its place.
+  const bar = "hidden h-7 shrink-0 items-center gap-4 border-t border-line bg-panel px-3 text-[11px] whitespace-nowrap text-ink-3 md:flex";
 
   if (account?.role === "sub") {
     const plans = status?.subPlans;
     return (
-      <footer className="flex h-7 shrink-0 items-center gap-4 overflow-hidden border-t border-line bg-panel px-3 text-[11px] whitespace-nowrap text-ink-3">
+      <footer className={cx(bar, "overflow-hidden")}>
         <Dot on label={account.plan === "daily" ? "Daily plan: every lead each morning" : `Free plan: ${plans?.freePerWeek ?? 10} leads a week`} title="Your lead plan" />
-        <Dot on={Boolean(plans?.email && account.digest)} label={plans?.email ? (account.digest ? "Email digests on" : "Email digests off") : "Email digests not set up"} title="Lead emails" />
-        <Dot on={Boolean(status?.claude)} label={status?.claude ? "AI customer finder on" : "AI customer finder needs a Claude key"} title="Find customers" />
+        <Dot on={Boolean(plans?.email && account.digest)} label={plans?.email ? (account.digest ? "Lead emails on" : "Lead emails off") : "Leads show here in the app"} title="Lead emails" />
       </footer>
     );
   }
 
+  const off = status ? [!status.claude && "AI drafts", !status.places && "sub search", !status.firecrawl && "website reader"].filter(Boolean) : [];
   return (
-    <footer className="flex h-7 shrink-0 items-center justify-between gap-4 border-t border-line bg-panel px-3 text-[11px] text-ink-3">
-      <div className="flex min-w-0 items-center gap-4 overflow-hidden whitespace-nowrap">
+    <footer className={cx(bar, "justify-between")}>
+      <div className="flex min-w-0 items-center gap-4 overflow-hidden">
         {status ? (
           <>
             <Dot
               on={Boolean(status.samData?.count)}
               label={
                 status.samData?.count
-                  ? `SAM.gov · ${status.samData.count.toLocaleString()} notices${status.samData.refreshing ? " (updating)" : ""}`
+                  ? `${status.samData.count.toLocaleString()} federal notices${status.samData.refreshing ? " (updating)" : ", checked hourly"}`
                   : status.samData?.refreshing
-                    ? "SAM.gov downloading…"
-                    : "SAM.gov sample data"
+                    ? "Downloading today's federal notices…"
+                    : "Sample notices"
               }
-              title="Contract opportunities from SAM.gov's daily file"
+              title="Open notices from SAM.gov's daily file"
             />
-            <Dot on label="USAspending live" title="Past award pricing (no key needed)" />
-            <Dot on={status.claude} label={status.claude ? `Claude · ${status.model}` : "Claude off (templates)"} title="AI breakdowns and drafts" />
-            <Dot
-              on={Boolean(status.places)}
-              label={status.places === "google" ? "Google Places" : status.places === "apify" ? "Apify Maps" : "Sub search sample"}
-              title="Subcontractor search"
-            />
-            <Dot on={Boolean(status.firecrawl)} label={status.firecrawl ? "Website reader on" : "Website reader off"} title="Firecrawl: reads subs' websites and state/local bid pages" />
+            {off.length > 0 && (
+              <button type="button" onClick={() => setView("settings")} className="rounded hover:text-ink-2 hover:underline" title="See what's connected">
+                Off on this site: {off.join(", ")}
+              </button>
+            )}
           </>
         ) : (
           <span>Connecting…</span>
         )}
       </div>
-      <div className="hidden items-center gap-3 whitespace-nowrap sm:flex">
+      <div className="flex items-center gap-3">
         <span>
           {focus.day}: {focus.task.toLowerCase()}
         </span>

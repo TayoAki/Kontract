@@ -29,7 +29,8 @@ export function Button({
       className={cx(
         "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50",
-        size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
+        // Touch screens get finger-sized targets; mouse users keep the compact sizes.
+        size === "sm" ? "h-7 px-2.5 text-xs pointer-coarse:h-10 pointer-coarse:px-3" : "h-9 px-3.5 text-sm pointer-coarse:h-11",
         variant === "primary" && "bg-accent text-on-accent hover:bg-accent-ink",
         variant === "secondary" && "border border-line-strong bg-panel text-ink hover:bg-panel-2",
         variant === "ghost" && "text-ink-2 hover:bg-panel-2 hover:text-ink",
@@ -145,15 +146,16 @@ export function Avatar({ name, size = 32, className }: { name: string; size?: nu
 }
 
 const fieldBase =
-  "w-full rounded-lg border border-line-strong bg-panel px-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
+  // 16px on touch screens so phones don't zoom in when a field is focused.
+  "w-full rounded-lg border border-line-strong bg-panel px-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 pointer-coarse:text-base";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cx(fieldBase, "h-9", className)} />;
+  return <input {...props} className={cx(fieldBase, "h-9 pointer-coarse:h-11", className)} />;
 }
 
 export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select {...props} className={cx(fieldBase, "h-9 pr-8", className)}>
+    <select {...props} className={cx(fieldBase, "h-9 pr-8 pointer-coarse:h-11", className)}>
       {children}
     </select>
   );
@@ -174,7 +176,7 @@ export function Label({ children, hint, className }: { children: ReactNode; hint
 
 export function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-ink-2 select-none">
+    <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-ink-2 select-none pointer-coarse:min-h-10">
       <button
         type="button"
         role="switch"
@@ -199,7 +201,7 @@ export function Chip({ active, onClick, children }: { active?: boolean; onClick?
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        "inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors",
+        "inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors pointer-coarse:h-10 pointer-coarse:px-3.5",
         active ? "border-accent bg-accent-soft text-accent-ink" : "border-line-strong bg-panel text-ink-2 hover:bg-panel-2",
       )}
     >
@@ -279,7 +281,7 @@ export function NumberInput({
           const n = Number.parseFloat(raw);
           onChange(Number.isFinite(n) ? n : 0);
         }}
-        className={cx(fieldBase, "h-8 text-right tabular-nums", prefix ? "pl-6" : "")}
+        className={cx(fieldBase, "h-8 text-right tabular-nums pointer-coarse:h-11", prefix ? "pl-6" : "")}
       />
     </div>
   );

@@ -100,10 +100,11 @@ function byToken(token: string): Row | undefined {
   return getDb().prepare("SELECT * FROM quote_request WHERE token = ?").get(token) as Row | undefined;
 }
 
-/** What the sub sees. Opening it marks the request viewed. */
-export function openQuote(token: string): PublicQuote | null {
+/** What the sub sees. Opening it marks the request viewed, unless it's the prime previewing. */
+export function openQuote(token: string, opts: { preview?: boolean } = {}): PublicQuote | null {
   const row = byToken(token);
   if (!row) return null;
+  if (opts.preview) return { snapshot: JSON.parse(row.snapshot) as QuoteSnapshot, status: row.status, response: row.response ? (JSON.parse(row.response) as QuoteResponse) : null };
   if (!row.viewed_at) {
     getDb()
       .prepare("UPDATE quote_request SET viewed_at = ?, status = CASE WHEN status = 'sent' THEN 'viewed' ELSE status END WHERE token = ?")

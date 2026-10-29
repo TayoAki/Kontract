@@ -7,6 +7,8 @@ import type { CompanyProfile, Deal, Subcontractor } from "./types.ts";
 // [brackets] needs the user's input.
 
 const or = (v: string | undefined, placeholder: string) => (v && v.trim() ? v.trim() : `[${placeholder}]`);
+/** The values that are filled in, for lines where a missing piece can just be left out. */
+const filled = (...vs: (string | undefined)[]) => vs.map((v) => v?.trim()).filter((v): v is string => Boolean(v));
 
 /** Ask subs for quotes a few days before the government's deadline. */
 export function quoteDueDate(deadline: string | null, now: Date = new Date()): string {
@@ -17,20 +19,52 @@ export function quoteDueDate(deadline: string | null, now: Date = new Date()): s
 }
 
 const plural = (n: number, unit: string) => (n === 1 || /s$/.test(unit) ? unit : `${unit}s`);
+const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
+// Kept as capitals when a title in all capitals is turned into a sentence.
+const ACRONYMS = new Set(["HVAC", "VA", "VAMC", "CBOC", "US", "USA", "USDA", "USACE", "USFS", "USFWS", "NPS", "BLM", "FAA", "DOD", "DOE", "GSA", "IHS", "NASA", "NOAA", "ADA", "LED", "IT", "AV", "UPS", "EMS", "PPE", "OSHA", "II", "III", "IV"]);
+
+/**
+ * A title as written: names like "Swan Lake Ranger District" or "Building 347"
+ * stay capitalized. Titles in all capitals, common on SAM.gov, become sentence
+ * case, keeping the acronyms they're known to have (HVAC, VA).
+ */
+export function sentenceCase(title: string): string {
+  if (/[a-z]/.test(title)) return title;
+  return title
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w, i) => {
+      const out = /\d/.test(w) || ACRONYMS.has(w.replace(/[^A-Z]/g, "")) ? w : w.toLowerCase();
+      return i === 0 ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+    })
+    .join(" ");
+}
+
+/** "1 base year + 2 option years" → "It runs 1 base year + 2 option years." Nothing when the notice doesn't say. */
+function lengthSentence(label: string): string {
+  if (/^check the notice/i.test(label)) return "";
+  return /^\d+ base/.test(label) ? `It runs ${label}.` : `It's a ${lowerFirst(label)}.`;
+}
+
+/** "commercial cleaning company" → "commercial cleaning": the trade, not the business. */
+function tradeOf(term: string | undefined): string {
+  return term ? term.replace(/\s+(?:company|companies|contractors?|services?)$/i, "") : "";
+}
 
 /** Neutral description of the work, safe to send to subs or the government. */
 export function workSummary(deal: Deal, now: Date = new Date()): string {
   const o = deal.opportunity;
   const b = deal.breakdown ?? rulesBreakdown(o, now);
-  const what = cleanTitle(o.title).toLowerCase() || "the work described";
+  const what = sentenceCase(cleanTitle(o.title)) || "The work described";
   const per = deal.pricing.periodLabel === "year" ? " per year" : "";
   // "1 job" says nothing; only real quantities (40 visits, 12 months) are worth stating.
   const qty = deal.pricing.lines
     .filter((l) => l.quantity > 0 && !(l.quantity === 1 && /^(job|lump sum|ls|each)$/i.test(l.unit)))
     .map((l) => `${l.quantity.toLocaleString()} ${plural(l.quantity, l.unit)}${per}`)
     .join(", ");
-  const term = /^check the notice/i.test(b.contractLength) ? "" : ` Term: ${b.contractLength.charAt(0).toLowerCase()}${b.contractLength.slice(1)}.`;
-  return `${what.charAt(0).toUpperCase()}${what.slice(1)} in ${placeLabel(o.placeOfPerformance)}${qty ? `, estimated at ${qty}` : ""}.${term}`;
+  const term = /^check the notice/i.test(b.contractLength) ? "" : ` Term: ${lowerFirst(b.contractLength)}.`;
+  return `${what} in ${placeLabel(o.placeOfPerformance)}${qty ? `, estimated at ${qty}` : ""}.${term}`;
 }
 
 export function priceTable(deal: Deal): string {
@@ -111,7 +145,7 @@ export function sowTemplate(deal: Deal, profile: CompanyProfile, now: Date = new
     .join("\n");
   return `# Scope of Work: ${o.title}
 
-**Request for quote from ${or(profile.companyName, "your company name")}**
+**Request for quote${profile.companyName?.trim() ? ` from ${profile.companyName.trim()}` : ""}**
 **Quotes due:** ${quoteDueDate(o.responseDeadline, now)}
 
 ## Summary
@@ -120,10 +154,7 @@ ${workSummary(deal, now)}
 ## Location
 ${placeLabel(o.placeOfPerformance)}${o.placeOfPerformance.zip ? ` ${o.placeOfPerformance.zip}` : ""}
 
-## Term
-${b.contractLength}
-
-## Work to be performed
+${/^check the notice/i.test(b.contractLength) ? "" : `## Term\n${b.contractLength}\n\n`}## Work to be performed
 ${lines || "- [Describe each task]"}
 
 ${docsSection(deal)}${customerDetails(o.description) ? `### Details from the customer\n${customerDetails(o.description)}\n` : ""}
@@ -140,8 +171,8 @@ ${[...new Set([...(b.keyRequirements.length ? b.keyRequirements : ["Licenses and
 Net 30 after each job is completed and invoiced.
 
 ## Contact
-${or(profile.contactName, "your name")}, ${or(profile.companyName, "company")}
-${or(profile.email, "email")} · ${or(profile.phone, "phone")}
+${filled(profile.contactName, profile.companyName).join(", ") || "[your name]"}
+${filled(profile.email, profile.phone).join(" · ") || "[email or phone]"}
 `;
 }
 
@@ -156,10 +187,9 @@ export function outreachTemplate(deal: Deal, profile: CompanyProfile, sub?: Subc
 
 ${hi}
 
-I'm ${or(profile.contactName, "your name")} with ${or(profile.companyName, "your company")}. We're bidding on a government contract for ${b.whoDoesTheWork.toLowerCase().replace(/^an? /, "")} work in ${place}, and we're looking for a local partner to do the work.
+I'm ${or(profile.contactName, "your name")} with ${or(profile.companyName, "your company")}. We're bidding on a government contract in ${place}, and we're looking for a local partner to do the work.
 
-- **What:** ${workSummary(deal, now)}
-- **Term:** ${b.contractLength}
+- **What:** ${workSummary(deal, now)}${/^check the notice/i.test(b.contractLength) ? "" : `\n- **Term:** ${b.contractLength}`}
 - **Pricing:** ${b.pricingStructure}
 
 It's steady work with a government customer. Payment is net 30 after each job. I've attached the scope of work. Could you send a quote by **${quoteDueDate(o.responseDeadline, now)}**?
@@ -170,8 +200,8 @@ ${or(profile.phone, "phone")}
 
 ## Call script
 
-1. "Hi, this is ${or(profile.contactName, "your name")} with ${or(profile.companyName, "your company")}. Do you do ${b.subcontractorSearchTerms[0] ?? "this kind of work"} in ${place}?"
-2. "We're bidding on a ${b.contractLength.toLowerCase()} government job and need a local partner. Can I email you the scope of work?"
+1. "Hi, this is ${or(profile.contactName, "your name")} with ${or(profile.companyName, "your company")}. Do you take on ${tradeOf(b.subcontractorSearchTerms[0]) || "this kind of"} work in ${place}?"
+2. "We're bidding on a government job there and need a local partner.${lengthSentence(b.contractLength) ? ` ${lengthSentence(b.contractLength)}` : ""} Can I email you the scope of work?"
 ${b.questionsForSubs.map((q, i) => `${i + 3}. "${q}"`).join("\n")}
 ${b.questionsForSubs.length + 3}. "What's the best email for the scope, and can you get me a number by ${quoteDueDate(o.responseDeadline, now)}?"
 `;
@@ -190,9 +220,8 @@ export function proposalTemplate(deal: Deal, profile: CompanyProfile, now: Date 
 **Date:** ${formatDate(now.toISOString())}
 
 ## Company information
-| | |
-|---|---|
 | Company | ${or(profile.companyName, "company name")} |
+|---|---|
 | UEI | ${or(profile.uei, "UEI from SAM.gov")} |
 | CAGE code | ${or(profile.cage, "CAGE code")} |
 | Address | ${or(profile.address, "address")} |
@@ -203,10 +232,10 @@ export function proposalTemplate(deal: Deal, profile: CompanyProfile, now: Date 
 ## Cover letter
 ${poc ? `Dear ${poc.name},` : "Dear Contracting Officer,"}
 
-${or(profile.companyName, "Our company")} is pleased to submit this quote for ${o.title.toLowerCase()} at ${placeLabel(o.placeOfPerformance)}. We have read the requirement in full and will provide all labor, equipment and supervision needed to complete it on schedule and in compliance with the ${o.type ? o.type.toLowerCase() : "solicitation"}.
+${or(profile.companyName, "Our company")} is pleased to submit this quote in response to ${o.solicitationNumber ? `solicitation ${o.solicitationNumber}, ` : ""}“${o.title},” for work in ${placeLabel(o.placeOfPerformance)}. We have read the requirement in full and will provide all labor, equipment and supervision needed to complete it on schedule and in compliance with the solicitation.
 
 ## Understanding of the requirement
-${o.office || o.agency} requires ${workSummary(deal, now).charAt(0).toLowerCase()}${workSummary(deal, now).slice(1)}${b.keyRequirements.length ? ` The contractor must meet the requirements below, including ${b.keyRequirements[0]!.charAt(0).toLowerCase()}${b.keyRequirements[0]!.slice(1)}.` : ""}
+${o.office || o.agency} is seeking the following: ${workSummary(deal, now)}${b.keyRequirements.length ? ` The contractor must meet the requirements below, including ${lowerFirst(b.keyRequirements[0]!)}.` : ""}
 
 ## Technical approach
 ${selected ? `We will perform this work with our local service partner, ${selected.name}, who will provide the crew and equipment on site.` : "We will perform this work with a qualified local service partner who will provide the crew and equipment on site."} ${or(profile.companyName, "Our company")} remains the single point of contact for scheduling, quality and invoicing.

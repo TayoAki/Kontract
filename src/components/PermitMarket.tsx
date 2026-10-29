@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/format";
 import type { FeedHealthStatus, SignalStrength, TradeId } from "@/lib/types";
 import { marketName, usePermits } from "./permits-state";
 import { useApp } from "./state";
-import { Badge, Button, cx } from "./ui";
+import { Button, cx } from "./ui";
 
 /** "Today", "Yesterday", "Oct 26". */
 export function relDay(iso: string, now: Date = new Date()): string {
@@ -100,7 +100,7 @@ export function PermitMarket() {
         <div className="mt-2 grid grid-cols-4 gap-1.5 text-center">
           {CRM_STAGES.filter((s) => s.id !== "not-a-fit").map((s) => (
             <div key={s.id} className="rounded-lg border border-line px-1 py-1.5">
-              <div className="truncate text-[10px] text-ink-3">{s.label}</div>
+              <div className="truncate text-[11px] text-ink-2">{s.label}</div>
               <div className={cx("text-sm font-semibold tabular-nums", s.id === "active" ? "text-good" : "text-ink")}>{bench.byStage[s.id]}</div>
             </div>
           ))}
@@ -141,12 +141,13 @@ export function PermitMarket() {
           })}
         </ul>
         {feeds.some((f) => f.gaps.length) && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {[...new Set(feeds.flatMap((f) => f.gaps))].slice(0, 3).map((g) => (
-              <Badge key={g} className="whitespace-normal">
-                {g}
-              </Badge>
-            ))}
+          <div className="mt-2 text-[11px] text-ink-3">
+            <div className="font-medium text-ink-2">Known gaps</div>
+            <ul className="mt-0.5 list-disc space-y-0.5 pl-3.5">
+              {[...new Set(feeds.flatMap((f) => f.gaps))].slice(0, 3).map((g) => (
+                <li key={g}>{g}</li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

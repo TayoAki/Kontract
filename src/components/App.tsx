@@ -8,7 +8,7 @@ import { AlertsView } from "./AlertsView";
 import { BottomBar } from "./BottomBar";
 import { CrmView } from "./CrmView";
 import { HomeView } from "./HomeView";
-import { LeftRail } from "./LeftRail";
+import { BottomNav, LeftRail } from "./LeftRail";
 import { takePendingAccount } from "./pending-account";
 import { PermitsView } from "./PermitsView";
 import { SettingsView } from "./SettingsView";
@@ -82,6 +82,7 @@ function SignedInApp({ user }: { user: { id: string; name: string; email: string
         </main>
       </div>
       <BottomBar />
+      <BottomNav />
       <Toast />
     </div>
   );
@@ -89,17 +90,31 @@ function SignedInApp({ user }: { user: { id: string; name: string; email: string
 
 function Toast() {
   const toast = useApp((s) => s.toast);
+  const action = useApp((s) => s.toastAction);
   const say = useApp((s) => s.say);
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => say(null), 3500);
+    // Long enough to read; longer when there's something to do (Undo).
+    const t = setTimeout(() => say(null), action ? 8000 : 4000);
     return () => clearTimeout(t);
-  }, [toast, say]);
+  }, [toast, action, say]);
   if (!toast) return null;
   return (
-    <div role="status" className="fixed bottom-10 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-ink px-4 py-2.5 text-sm text-bg shadow-lg">
-      {toast}
-      <button type="button" onClick={() => say(null)} aria-label="Dismiss" className="opacity-70 hover:opacity-100">
+    <div role="status" className="fixed bottom-20 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg bg-ink px-4 py-2.5 text-sm text-bg shadow-lg md:bottom-10">
+      <span className="min-w-0">{toast}</span>
+      {action && (
+        <button
+          type="button"
+          onClick={() => {
+            action.run();
+            say(null);
+          }}
+          className="shrink-0 rounded-md px-2 py-1 font-semibold underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bg"
+        >
+          {action.label}
+        </button>
+      )}
+      <button type="button" onClick={() => say(null)} aria-label="Dismiss" className="grid size-8 shrink-0 place-items-center rounded-md opacity-70 hover:opacity-100">
         <X className="size-4" />
       </button>
     </div>

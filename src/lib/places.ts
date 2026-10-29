@@ -131,7 +131,7 @@ export async function findSubcontractors(query: string, location: string): Promi
     return {
       results: sampleSubcontractors(q, loc),
       source: "sample",
-      notice: "Sample listings. Add GOOGLE_PLACES_API_KEY or APIFY_API_TOKEN to search real businesses.",
+      notice: "Sample listings: business search is off on this site.",
     };
   }
   const results = await cached(`places:${provider}:${text.toLowerCase()}`, TTL, () =>

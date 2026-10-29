@@ -147,6 +147,8 @@ interface AppState {
   selectedId: string | null;
   pricing: Record<string, PricingResults>;
   toast: string | null;
+  /** An action offered in the toast (Undo, Open the bid); the toast stays up longer when there is one. */
+  toastAction: { label: string; run: () => void } | null;
 
   /** Clear everything held in memory (on sign-in as a different account). */
   reset(user: SignedInUser): void;
@@ -178,7 +180,7 @@ interface AppState {
   syncQuotes(): Promise<void>;
   saveAccount(patch: Partial<Account> & { invitedBy?: string }): Promise<Account>;
   removeContact(id: string): Promise<void>;
-  say(msg: string | null): void;
+  say(msg: string | null, action?: { label: string; run: () => void }): void;
 }
 
 type Data = Omit<AppState, { [K in keyof AppState]: AppState[K] extends (...args: never[]) => unknown ? K : never }[keyof AppState]>;
@@ -212,6 +214,7 @@ const INITIAL: Data = {
   selectedId: null,
   pricing: {},
   toast: null,
+  toastAction: null,
 };
 
 export const useApp = create<AppState>((set, get) => ({
@@ -277,7 +280,7 @@ export const useApp = create<AppState>((set, get) => ({
       const contact = (sub.crmId && get().contacts[sub.crmId]) || findContact(Object.values(get().contacts), sub.name);
       if (contact) get().upsertContact(recordQuote(contact, deal.opportunity.title, q.response!.total));
       await api(`/api/quotes/${encodeURIComponent(q.token)}/imported`, { method: "POST" }).catch(() => undefined);
-      set({ toast: `${q.subName} sent a quote: $${Math.round(q.response!.total).toLocaleString("en-US")} for "${deal.opportunity.title.slice(0, 50)}"` });
+      get().say(`${q.subName} sent a quote: $${Math.round(q.response!.total).toLocaleString("en-US")} for "${deal.opportunity.title.slice(0, 50)}"`, { label: "See it", run: () => get().open(q.dealId, "subs") });
     }
   },
 
@@ -381,6 +384,7 @@ export const useApp = create<AppState>((set, get) => ({
     cancelSave(`deal:${id}`);
     const { [id]: _, ...rest } = deals;
     set({ deals: rest, scratch: { ...scratch, [id]: deal } });
+    get().say("Removed from My bids.", { label: "Undo", run: () => get().track(id) });
     await api(`/api/deals/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
   },
 
@@ -436,7 +440,7 @@ export const useApp = create<AppState>((set, get) => ({
     await api(`/api/crm/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
   },
 
-  say: (toast) => set({ toast }),
+  say: (toast, action) => set({ toast, toastAction: action ?? null }),
 }));
 
 export function useSelectedDeal(): Deal | null {

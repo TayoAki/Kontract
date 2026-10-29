@@ -49,13 +49,13 @@ The layout follows the wireframe:
 
 | Area | What it does |
 |---|---|
-| **Left rail** | Labeled icons. This week (weekly rhythm + pipeline, and a "Start here" checklist for new accounts: company details, first bid, first quote, first proposal), Find opportunities, Deadlines, My bids, Permit leads (with a link to Data sources), Sub bench, Settings, and your account. A subcontractor account has My leads, Quote requests, Find customers and Settings. |
+| **Left rail** (bottom tabs on a phone) | Labeled icons. This week (weekly rhythm + pipeline, and a "Start here" checklist for new accounts: company details, first bid, first quote, first proposal), Find opportunities, Deadlines, My bids, Permit leads (with a link to Data sources), Sub bench, Settings, and your account. A subcontractor account has My leads, Quote requests, Find customers and Settings. |
 | **Sidebar** | Search every open SAM.gov notice and state/local bid (keyword across titles and descriptions, federal or state & local, state, NAICS, set-aside, posted date, time to respond, services only, open bids only), sorted by fit, deadline or newest, 100 at a time. Or switch to My bids filtered by stage. Each item shows days left and a fit score; state and local bids carry a badge. |
 | **Tabs** | **Overview**: what the bid documents say (below), what they're asking for in plain English, where, who can bid, requirements, red flags, questions for subs, the notice, and the contracting officer. **Past pricing**: similar past awards, the typical price per year, and the bid builder (sub cost → your price, per unit, per year, over the contract). **Subcontractors**: scope of work to send, local business search, companies that already won this work, **businesses pulling that trade's permits near the job**, subs from your bench who do this work in the state, and a shortlist with quotes, a six-point "hunger check", an email/call script and a **quote link** per company. **Proposal**: a pre-submit checklist (including blanks left and forms to fill in), the proposal in a document editor (headings, lists, tables; [placeholders] highlighted), **Word** download, print to PDF, copy or .md download, and submitted/won/lost. |
 | **Right sidebar** | Fit score with the reasons, your bid (sub cost, price, profit, margin), your price against past awards, and next steps. |
-| **Bottom bar** | Which data sources are live, today's focus, and bids due this week. |
+| **Bottom bar** (desktop) | How many federal notices are loaded, which features are off on this site (links to Settings → What's connected), today's focus, and bids due this week. |
 
-Anything you price, shortlist or draft is saved to **My bids** automatically. Press **Track** to save one without changing it.
+Anything you price, shortlist or draft is saved to **My bids** automatically. Press **Track bid** to save one without changing it; removing a bid can be undone from the notice that pops up.
 
 ### From the bid documents
 
@@ -73,7 +73,7 @@ With `ANTHROPIC_API_KEY`, **Read the scope with Claude** (about $0.20 a bid, on 
 
 ### Quote links
 
-On the Subcontractors tab, **Get quote link** makes a private link for one sub (no account needed). They open it on their phone, see the scope of work, the line items and quantities, the due date and your contact details, and enter a price per line, a start date, whether they're insured, and notes. **None of your pricing, markup or margin is on that page**, and the government's emails and phone numbers are scrubbed from the scope. When they send it, the quote lands in the bid on its own (the app checks every minute and when you come back to the tab): the sub is marked quoted with their total and per-line prices, an unpriced bid is filled with their cost plus your default markup, and the quote is logged on their bench record. A revised quote replaces the old one. The card shows whether the link was opened.
+On the Subcontractors tab, **Get quote link** makes a private link for one sub (no account needed). They open it on their phone, see the scope of work, the line items and quantities, the due date and your contact details, and enter a price per line, a start date, whether they're insured, and notes. **None of your pricing, markup or margin is on that page**, and the government's emails and phone numbers are scrubbed from the scope. When they send it, the quote lands in the bid on its own (the app checks every minute and when you come back to the tab): the sub is marked quoted with their total and per-line prices, an unpriced bid is filled with their cost plus your default markup, and the quote is logged on their bench record. A revised quote replaces the old one. The card shows whether the link was opened. **Preview** opens the page exactly as the sub sees it, without counting as them opening it, and the card warns when your company name is blank or the scope still has [blanks] the sub would see.
 
 ### Permit leads
 
@@ -158,7 +158,7 @@ src/components/      The UI
 | `GET/POST /api/l/:token` `{answer: "taken"\|"passed"}` | The public lead page's data and the sub's answer (no session; the token is the key) |
 | `GET /api/sub/shared` | Leads primes passed to a sub's email |
 | `GET/POST /api/quotes` `{deal, subId}`, `POST /api/quotes/:token/imported` | Your quote links: list, make one, mark a quote as pulled into the bid |
-| `GET/POST /api/q/:token` | The public quote page's data and the sub's submission (no session; the token is the key) |
+| `GET/POST /api/q/:token` | The public quote page's data and the sub's submission (no session; the token is the key). `?preview=1` reads it without marking it opened |
 | `GET/PUT /api/account` | Role (prime or sub), trade, area, ZIPs, website, digest setting |
 | `GET /api/sub/leads`, `GET /api/sub/quotes` | A sub's leads (weekly 10 or daily) and the quote requests sent to their email |
 | `POST /api/sub/checkout`, `POST /api/sub/portal` | Stripe Checkout for the daily plan, and the billing portal |

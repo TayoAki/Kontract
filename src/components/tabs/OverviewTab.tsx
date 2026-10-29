@@ -154,14 +154,19 @@ export function OverviewTab({ deal }: { deal: Deal }) {
             {o.setAside && <Badge tone={sb ? "good" : "neutral"}>{o.setAside.replace(/\s*\(FAR 19\.5\)/, "")}</Badge>}
           </div>
           <div className="flex gap-2">
-            <Button variant={tracked ? "secondary" : "primary"} size="sm" onClick={() => (tracked ? void untrack(deal.id) : track(deal.id))}>
-              <Star className={cx("size-3.5", tracked && "fill-current text-warn")} /> {tracked ? "Tracking" : "Track bid"}
+            <Button
+              size="sm"
+              aria-pressed={tracked}
+              title={tracked ? "In My bids. Click to remove it (you can undo)." : "Save it to My bids"}
+              onClick={() => (tracked ? void untrack(deal.id) : track(deal.id))}
+            >
+              <Star className={cx("size-3.5", tracked && "fill-current text-warn")} /> {tracked ? "In My bids" : "Track bid"}
             </Button>
             <a
               href={o.samUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-7 items-center gap-1 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+              className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
             >
               {o.portal ?? "SAM.gov"} <ExternalLink className="size-3.5" />
             </a>
@@ -240,7 +245,7 @@ export function OverviewTab({ deal }: { deal: Deal }) {
           </div>
           <List title="Ask your subcontractor" items={b.questionsForSubs} />
         </Card>
-        {!claude && <Note>Add ANTHROPIC_API_KEY to get Claude&apos;s full read of each notice, including what&apos;s buried in the description.</Note>}
+        {!claude && <Note>This is a rules-based read. With AI reading on (see Settings), you also get what&apos;s buried in the description.</Note>}
       </Section>
 
       <Section title="What the notice says">

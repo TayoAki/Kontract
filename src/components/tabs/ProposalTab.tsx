@@ -4,9 +4,10 @@ import type { Editor } from "@tiptap/react";
 import { Copy, FileDown, FileText, Loader2, Printer, Send, Sparkles, Square, ThumbsDown, Trophy } from "lucide-react";
 import { useCallback, useState } from "react";
 import { bidTotals } from "@/lib/bid-math";
+import { stageLabel } from "@/lib/deal";
 import { daysUntil, formatDate, money } from "@/lib/format";
 import type { Level } from "@/lib/fit-score";
-import { findPlaceholders } from "@/lib/proposal-doc";
+import { findPlaceholders } from "@/lib/placeholders";
 import type { Deal } from "@/lib/types";
 import { Markdown } from "../Markdown";
 import { DocEditor } from "../DocEditor";
@@ -142,7 +143,7 @@ export function ProposalTab({ deal }: { deal: Deal }) {
 
       <Section
         title="Proposal"
-        subtitle={claude ? "Claude drafts it from the notice, your price and your company profile. Edit before sending." : "A fill-in-the-blanks draft from your price and profile. Add ANTHROPIC_API_KEY for a tailored one."}
+        subtitle={claude ? "Claude drafts it from the notice, your price and your company profile. Edit before sending." : "A fill-in-the-blanks draft from your price and profile (AI drafting is off on this site). Fill in each highlighted [blank] before sending."}
         actions={
           <>
             {draft.busy ? (
@@ -201,7 +202,7 @@ export function ProposalTab({ deal }: { deal: Deal }) {
       <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
         <div className="flex-1">
           <div className="text-sm font-semibold text-ink">
-            {submitted ? "Submitted" : "Ready to send?"} {submitted && <Badge tone={deal.stage === "won" ? "good" : deal.stage === "lost" ? "bad" : "accent"}>{deal.stage}</Badge>}
+            {submitted ? "Submitted" : "Ready to send?"} {submitted && <Badge tone={deal.stage === "won" ? "good" : deal.stage === "lost" ? "bad" : "accent"}>{stageLabel(deal.stage)}</Badge>}
           </div>
           <div className="text-xs text-ink-2">
             {submitted
@@ -221,7 +222,14 @@ export function ProposalTab({ deal }: { deal: Deal }) {
             </Button>
           </div>
         ) : (
-          <Button variant="primary" onClick={() => updateDeal(deal.id, (d) => ({ ...d, stage: "submitted", submittedAt: new Date().toISOString() }))}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              const open = checks.filter((c) => c.level === "bad").map((c) => `• ${c.label}`);
+              if (open.length && !window.confirm(`These aren't done yet:\n${open.join("\n")}\n\nMark it submitted anyway?`)) return;
+              updateDeal(deal.id, (d) => ({ ...d, stage: "submitted", submittedAt: new Date().toISOString() }));
+            }}
+          >
             <Send className="size-4" /> Mark as submitted
           </Button>
         )}
