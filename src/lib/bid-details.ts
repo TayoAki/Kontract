@@ -78,7 +78,7 @@ const ESTIMATE = new RegExp(
   String.raw`(?:estimated|anticipated|approximate|projected)\s+(?:total\s+)?(?:contract\s+|project\s+|construction\s+)?(?:value|cost|price|amount|budget)[^.$\n]{0,60}?(${MONEY})(?:\s*(?:to|-|–|and)\s*(${MONEY}))?|budget\s+(?:of|is|for this (?:project|contract|requirement)(?: is)?)\s*(?:approximately\s+)?(${MONEY})`,
   "i",
 );
-const CEILING = new RegExp(String.raw`(?:not[- ]to[- ]exceed|NTE|ceiling|maximum (?:contract )?value)[^.$\n]{0,40}?(${MONEY})`, "gi");
+const CEILING = new RegExp(String.raw`(?:not[- ](?:to[- ])?exceed|NTE|ceiling|maximum (?:contract )?value)[^.$\n]{0,40}?(${MONEY})`, "gi");
 
 function estimate(doc: ReadDoc): Cited<BidBudget> | null {
   const m = ESTIMATE.exec(doc.text);
@@ -93,8 +93,10 @@ function ceiling(doc: ReadDoc): Cited<BidBudget> | null {
   for (const m of doc.text.matchAll(CEILING)) {
     const n = parseMoney(m[1]!);
     const sentence = around(doc.text, m.index!, m[0].length);
-    // Clauses quote thresholds ("orders not to exceed $3,500"); keep ceilings on this contract.
-    if (!n || n < 10_000 || !/contract|total|order|award|budget|project|requirement/i.test(sentence) || /micro-?purchase|threshold|clause/i.test(sentence)) continue;
+    // Clauses quote thresholds ("orders not to exceed $3,500") and fee caps ("1% of the contract amount, not to exceed $10,000");
+    // keep only a ceiling on this contract's total.
+    const before = doc.text.slice(Math.max(0, m.index! - 80), m.index!);
+    if (!n || n < 10_000 || !/\b(?:contract|award|order|project|total|budget)\b[^.]{0,40}$/i.test(before) || /micro-?purchase|threshold|clause|percent|%|\bfees?\b|per (?:day|occurrence|claim|hour)|deductible|liquidated/i.test(sentence)) continue;
     return { value: { low: null, high: n, kind: "ceiling" }, quote: sentence, doc: doc.name };
   }
   return null;

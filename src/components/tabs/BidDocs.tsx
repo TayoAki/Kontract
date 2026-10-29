@@ -25,7 +25,9 @@ export function useBidDetails(deal: Deal) {
   const [busy, setBusy] = useState<"rules" | "claude" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const o = deal.opportunity;
-  const canRead = o.source === "bulk" && !o.isSample;
+  const firecrawl = useApp((s) => Boolean(s.status?.firecrawl));
+  // SAM.gov attachments are public; state and local bid pages need Firecrawl to render.
+  const canRead = !o.isSample && (o.source === "bulk" || (o.source === "sled" && firecrawl));
   const have = deal.details?.noticeId === o.id ? deal.details : undefined;
   const started = useRef<string | null>(null);
 
@@ -139,7 +141,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
           </>
         ) : (
           <p className="flex items-center gap-2 text-[13px] text-ink-3">
-            <Loader2 className="size-4 animate-spin" /> Reading the attachments on SAM.gov…
+            <Loader2 className="size-4 animate-spin" /> {o.source === "sled" ? `Reading the bid page on ${o.portal ?? "the portal"}…` : "Reading the attachments on SAM.gov…"}
           </p>
         )}
       </div>
@@ -187,7 +189,7 @@ export function BidDocs({ deal }: { deal: Deal }) {
       <Card className="space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-ink-3">
-            Read {readCount} of {d.documents.length} attachment{d.documents.length === 1 ? "" : "s"} and the notice · {formatDate(d.readAt, { year: undefined, hour: "numeric", minute: "2-digit" })}
+            Read {readCount} of {d.documents.length} {o.source === "sled" ? "document" : "attachment"}{d.documents.length === 1 ? "" : "s"} and {o.source === "sled" ? `the ${o.portal ?? "portal"} page` : "the notice"} · {formatDate(d.readAt, { year: undefined, hour: "numeric", minute: "2-digit" })}
           </p>
           {busy === "rules" && <Loader2 className="size-3.5 animate-spin text-ink-3" />}
         </div>
@@ -296,7 +298,19 @@ export function BidDocs({ deal }: { deal: Deal }) {
         <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
           Attachments <Badge>{d.documents.length}</Badge>
         </div>
-        {d.documents.length ? <DocList docs={d.documents} /> : <p className="text-[13px] text-ink-2">No attachments on this notice.</p>}
+        {d.documents.length ? (
+          <DocList docs={d.documents} />
+        ) : o.source === "sled" ? (
+          <p className="text-[13px] text-ink-2">
+            The documents aren&apos;t public on this page (most portals need a free vendor login).{" "}
+            <a href={o.samUrl} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+              Open it on {o.portal ?? "the portal"}
+            </a>
+            .
+          </p>
+        ) : (
+          <p className="text-[13px] text-ink-2">No attachments on this notice.</p>
+        )}
       </div>
     </div>
   );

@@ -94,3 +94,30 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* The proposal editor's document (TipTap is unstyled). */
+.proposal-doc {
+  font-size: 13.5px;
+  line-height: 1.65;
+  min-height: 24rem;
+}
+.proposal-doc > * + * {
+  margin-top: 0.6em;
+}
+.proposal-doc h1 { font-size: 1.6em; font-weight: 650; margin-top: 1.2em; }
+.proposal-doc h2 { font-size: 1.35em; font-weight: 650; margin-top: 1.2em; }
+.proposal-doc h3 { font-size: 1.1em; font-weight: 600; margin-top: 1.4em; padding-bottom: 0.2em; border-bottom: 1px solid var(--line); }
+.proposal-doc h4 { font-weight: 600; margin-top: 1em; }
+.proposal-doc ul { list-style: disc; padding-left: 1.4em; }
+.proposal-doc ol { list-style: decimal; padding-left: 1.4em; }
+.proposal-doc li > p { margin: 0.15em 0; }
+.proposal-doc a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.proposal-doc hr { border: 0; border-top: 1px solid var(--line); margin: 1.2em 0; }
+.proposal-doc blockquote { border-left: 3px solid var(--line-strong); padding-left: 0.8em; color: var(--ink-2); }
+.proposal-doc code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.9em; background: var(--panel-2); border-radius: 4px; padding: 0.1em 0.3em; }
+.proposal-doc table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 13px; table-layout: fixed; }
+.proposal-doc th, .proposal-doc td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.proposal-doc th { background: var(--panel-2); font-weight: 600; }
+.proposal-doc td p, .proposal-doc th p { margin: 0; }
+.proposal-doc .selectedCell { background: var(--accent-soft); }
+.proposal-doc .blank { background: var(--warn-soft); color: var(--warn); border-radius: 3px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 35%, transparent); }

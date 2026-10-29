@@ -61,6 +61,7 @@ export function BottomBar() {
               label={status.places === "google" ? "Google Places" : status.places === "apify" ? "Apify Maps" : "Sub search sample"}
               title="Subcontractor search"
             />
+            <Dot on={Boolean(status.firecrawl)} label={status.firecrawl ? "Website reader on" : "Website reader off"} title="Firecrawl: reads subs' websites and state/local bid pages" />
           </>
         ) : (
           <span>Connecting…</span>

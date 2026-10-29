@@ -28,10 +28,12 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/bid-details.ts`, `bid-reading.ts`, `bid-documents.ts` | Rules for budget/bonds/site visit/dates/requirements/forms with citations; what to send Claude and checking its quotes; listing + downloading SAM.gov attachments (public endpoints) and caching per attachment set |
 | `src/lib/usaspending.ts`, `pricing-stats.ts` | Past awards, typical per-year price, past winners |
 | `src/lib/places.ts` | Local businesses via Google Places or Apify |
+| `src/lib/firecrawl.ts`, `site-facts.ts`, `sub-website.ts` | Firecrawl scrape (v2); emails/phones/licenses/services/area from a website; reading a sub's site (home + contact page, cached a month) |
 | `src/lib/claude.ts`, `prompts.ts` | Breakdown (structured output) and streamed drafts |
 | `src/lib/fit-score.ts`, `rules.ts` | Fit score and the no-AI breakdown |
 | `src/lib/bid-math.ts` | Sub cost, price, profit, margin, markup |
 | `src/lib/templates.ts` | Fill-in drafts when Claude isn't configured |
+| `src/lib/proposal-doc.ts` | The proposal as a Word file (from the editor's document) and the [placeholders] left in it |
 | `src/lib/permit-sources.ts`, `permit-normalize.ts`, `permit-trades.ts` | The source register (feeds per city, cadence, gaps), row → Permit, grouping by address, which trades a permit is a lead for and how strongly, what work a job needs |
 | `src/lib/permits.ts`, `permit-health.ts`, `permit-pitch.ts` | Fetch + cache permits per feed, 6-hourly sync, contractors pulling them near a job; feed health from past checks; the sub invite |
 | `src/lib/quote.ts`, `quotes.ts` | Quote links: what a sub sees (no pricing, contacts scrubbed), validating and applying a quote to the bid; the SQLite rows |
@@ -48,7 +50,7 @@ Kontract helps a small business win government service contracts as the prime co
 
 - **Check for a tool first.** Extend `src/lib/` before writing one-off scripts. Keep business logic there (pure and testable), not in components.
 - **Test what you change.** `npm test` (node:test, pure modules only: anything importing `server-only` can't load under node) and `npm run typecheck`. Add a test next to the module for new logic.
-- **Self-anneal.** When an API breaks or changes, fix the tool, test it, then update the directive with what you learned (limits, field quirks, timing). Ask before running anything that spends paid credits (Claude, Apify, Google Places) in bulk.
+- **Self-anneal.** When an API breaks or changes, fix the tool, test it, then update the directive with what you learned (limits, field quirks, timing). Ask before running anything that spends paid credits (Claude, Apify, Google Places, Firecrawl) in bulk.
 - **Update directives, don't replace them.** They're living SOPs. Don't create or overwrite one without asking.
 - **Never put margin or pricing in anything a subcontractor sees** (the quote page is built from `quoteSnapshot` in `quote.ts`; keep it that way), and never invent licenses, past performance or numbers in a proposal. Use `[placeholders]`.
 - **The AI finder never sends anything** and never guesses contact details. Each real run spends Claude credits (web search + fetch); test with the sample mode (no key) unless the user OKs a live run.
@@ -56,5 +58,5 @@ Kontract helps a small business win government service contracts as the prime co
 ## Files
 
 - `.data/`: accounts, each user's pipeline and CRM (`kontract.db`), and caches. Never commit; safe to delete caches, never `kontract.db`.
-- `.env.local`: API keys (`SAM_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_PLACES_API_KEY` / `APIFY_API_TOKEN`, `SOCRATA_APP_TOKEN`, `STRIPE_*`, `RESEND_API_KEY`) and `BETTER_AUTH_SECRET`. Never commit.
+- `.env.local`: API keys (`SAM_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_PLACES_API_KEY` / `APIFY_API_TOKEN`, `SOCRATA_APP_TOKEN`, `FIRECRAWL_API_KEY`, `STRIPE_*`, `RESEND_API_KEY`) and `BETTER_AUTH_SECRET`. Never commit.
 - Claude model defaults to `claude-opus-5-5` (`ANTHROPIC_MODEL` overrides).

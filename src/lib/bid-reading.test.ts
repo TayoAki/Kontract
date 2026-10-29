@@ -45,3 +45,18 @@ test("scope items Claude can't quote from the documents are dropped", () => {
   assert.equal(r.summary, "Replace a roof.");
   assert.deepEqual(r.trades, ["Roofing"]);
 });
+
+test("a bid page's own documents, not the portal's guides; page text without the clutter", async () => {
+  const { documentLinks, cleanPageMarkdown } = await import("./bid-reading.ts");
+  assert.deepEqual(
+    documentLinks(
+      ["https://bidcondocs.delaware.gov/DSU/DSU26-PC24-013_itb.pdf", "/DSU/DSU26-PC24-013_specs.pdf", "https://a856-cityrecord.nyc.gov/Content/CityRecordOnlineUserGuide.pdf", "https://www1.nyc.gov/assets/dcas/downloads/pdf/cityrecord/cityrecord-10-28-26.pdf", "https://x.gov/Bids/Details/9374", "mailto:a@b.gov", "https://bidcondocs.delaware.gov/DSU/DSU26-PC24-013_itb.pdf"],
+      "https://bidcondocs.delaware.gov/Bids/Details/9374",
+    ),
+    [
+      { url: "https://bidcondocs.delaware.gov/DSU/DSU26-PC24-013_itb.pdf", name: "DSU26-PC24-013 itb.pdf" },
+      { url: "https://bidcondocs.delaware.gov/DSU/DSU26-PC24-013_specs.pdf", name: "DSU26-PC24-013 specs.pdf" },
+    ],
+  );
+  assert.equal(cleanPageMarkdown("![logo](x.png)\nSelect LanguageAbkhaz…\n# Design Build\n\n\n\nEmail [timothy@hacla.org](mailto:timothy@hacla.org)"), "# Design Build\n\nEmail timothy@hacla.org");
+});

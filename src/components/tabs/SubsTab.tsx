@@ -13,6 +13,7 @@ import { contractorDetail, Insured } from "../PermitDetail";
 import { api, useApp } from "../state";
 import { useDraft } from "../useDraft";
 import { Avatar, Badge, Button, Card, Chip, cx, Empty, ErrorNote, Input, Note, NumberInput, Section, Select, TextArea } from "../ui";
+import { WebsiteFacts } from "../WebsiteFacts";
 import { defaultPricingQuery, usePastAwards } from "./PricingTab";
 
 type Found = Omit<Subcontractor, "id" | "status" | "vetting">;
@@ -428,6 +429,14 @@ function SubCard({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
           ))}
         </Select>
       </div>
+
+      {sub.website && sub.source !== "sample" && (
+        <WebsiteFacts
+          website={sub.website}
+          have={{ email: sub.email, phone: sub.phone, license: sub.license }}
+          onUse={({ email, phone, license }) => patch({ ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(license ? { license } : {}), vetting: { ...sub.vetting, hasWebsite: true, ...(email && !/@(gmail|yahoo|hotmail|outlook|aol)\./i.test(email) ? { proEmail: true } : {}) } })}
+        />
+      )}
 
       <QuoteLink deal={deal} sub={sub} />
 

@@ -93,3 +93,37 @@ export function verifyReading(raw: RawReading, docs: ReadDoc[], now: Date = new 
   const list = (xs: string[], n: number) => [...new Set(xs.map((x) => x.trim()).filter(Boolean))].slice(0, n);
   return { summary: raw.summary.trim(), scope: scope.slice(0, 40), trades: list(raw.trades, 12), questions: list(raw.questions, 10), risks: list(raw.risks, 10), readAt: now.toISOString() };
 }
+
+// ---- State and local bid pages ----
+
+const DOC_LINK = /\.(pdf|docx|xlsx|xlsm|pptx|txt)(?:[?#]|$)/i;
+const SITE_WIDE = /user-?guide|help|faq|privacy|accessib|terms|cityrecord-\d{2}-\d{2}-\d{2}\.pdf|logo|banner/i;
+
+/** Links on a bid page that look like the bid's own documents (not the portal's guides). */
+export function documentLinks(links: string[], pageUrl: string): { url: string; name: string }[] {
+  const out = new Map<string, string>();
+  for (const l of links) {
+    let u: URL;
+    try {
+      u = new URL(l, pageUrl);
+    } catch {
+      continue;
+    }
+    if (!/^https?:$/.test(u.protocol) || !DOC_LINK.test(u.pathname) || SITE_WIDE.test(u.pathname)) continue;
+    const name = decodeURIComponent(u.pathname.split("/").pop() ?? "").replace(/[_+]/g, " ").trim();
+    if (name && !out.has(u.href)) out.set(u.href, name);
+  }
+  return [...out].slice(0, 25).map(([url, name]) => ({ url, name }));
+}
+
+/** A portal page as readable text: no images, link text without URLs, no language pickers. */
+export function cleanPageMarkdown(md: string): string {
+  return md
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .split("\n")
+    .filter((l) => !/^\s*Select Language/i.test(l) && l.length < 2000)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

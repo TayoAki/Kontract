@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { extractBidDetails, type ReadDoc } from "./bid-details";
-import { buildCorpus, orderDocs, verifyReading } from "./bid-reading";
+import { buildCorpus, cleanPageMarkdown, documentLinks, orderDocs, verifyReading } from "./bid-reading";
 import { ClaudeError, fallback, getClient, hasClaude, MODEL } from "./claude";
 import { docText, DocTextError, extOf, readable } from "./doc-text";
+import { hasFirecrawl, scrape } from "./firecrawl";
 import { fetchAttachments, hasSamKey } from "./sam";
 import { cached } from "./store";
 import type { BidDetails, BidDocument, Opportunity } from "./types";
@@ -42,9 +43,33 @@ interface SamAttachment {
   deletedFlag?: string;
 }
 
+interface Portal {
+  documents: BidDocument[];
+  page: ReadDoc | null;
+}
+
+/** State and local bids: the portal's bid page (rendered by Firecrawl) and any public documents it links. */
+async function portal(o: Opportunity): Promise<Portal> {
+  if (o.source !== "sled" || !hasFirecrawl() || !/^https?:\/\//.test(o.samUrl)) return { documents: [], page: null };
+  try {
+    return await cached(`portal:${o.id}`, 6 * 60 * 60 * 1000, async () => {
+      const p = await scrape(o.samUrl, { waitForMs: 6000 });
+      const text = cleanPageMarkdown(p.markdown);
+      return {
+        documents: documentLinks(p.links, p.url).map((d): BidDocument => ({ id: d.url, name: d.name, url: d.url, size: null, postedDate: null, read: "skipped" })),
+        page: text ? { name: `${o.portal ?? "Bid"} page`, text } : null,
+      };
+    });
+  } catch (err) {
+    console.error("portal read failed", o.samUrl, (err as Error).message);
+    return { documents: [], page: null };
+  }
+}
+
 /** The notice's attachments, newest posting first. */
 export async function listAttachments(o: Opportunity): Promise<BidDocument[]> {
-  if (o.source === "sled" || o.isSample) return [];
+  if (o.isSample) return [];
+  if (o.source === "sled") return (await portal(o)).documents;
   return cached(`sam:resources:${o.id}`, LIST_TTL, async () => {
     try {
       const res = await fetch(RESOURCES(o.id), { headers: { Accept: "application/hal+json" }, cache: "no-store", signal: AbortSignal.timeout(20_000) });
@@ -141,7 +166,8 @@ function remember(key: string, texts: ReadDoc[]) {
 }
 
 async function textsFor(o: Opportunity, list: BidDocument[], fp: string): Promise<{ documents: BidDocument[]; texts: ReadDoc[] }> {
-  const notice: ReadDoc[] = o.description ? [{ name: "Notice", text: o.description }] : [];
+  const page = o.source === "sled" ? (await portal(o)).page : null;
+  const notice: ReadDoc[] = [...(o.description ? [{ name: "Notice", text: o.description }] : []), ...(page ? [page] : [])];
   const hit = textCache.get(`${o.id}:${fp}`);
   if (hit) return { documents: list, texts: hit.texts };
   const read = await readAll(list);

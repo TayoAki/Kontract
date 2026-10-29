@@ -28,6 +28,8 @@ test("magnitude: a stated range, a checked box on a list, and an unchecked list"
   const est = findBudget([{ name: "PWS", text: "The estimated contract value is $480,000 over five years." }]);
   assert.deepEqual(est?.value, { low: 480_000, high: 480_000, kind: "estimate" });
   assert.equal(findBudget([{ name: "RFQ", text: "Orders not to exceed the micro-purchase threshold of $10,000 per clause 52.213." }]), null);
+  assert.equal(findBudget([{ name: "specs.pdf", text: "Permit fees are *one (1) percent of contract amount not to exceed $10,000 5.3 ASBESTOS ABATEMENT" }]), null, "a fee cap isn't the budget");
+  assert.deepEqual(findBudget([{ name: "RFP", text: "The total contract value shall not exceed $750,000 over the base and option years." }])?.value, { low: null, high: 750_000, kind: "ceiling" });
 });
 
 test("the facts from a VA roof replacement notice", () => {

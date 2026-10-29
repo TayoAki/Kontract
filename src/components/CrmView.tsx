@@ -27,6 +27,7 @@ import { Insured, useJoinUrl } from "./PermitDetail";
 import { usePermits } from "./permits-state";
 import { useApp } from "./state";
 import { Avatar, Badge, Button, Card, Chip, cx, Empty, Input, Label, Section, Select, TextArea } from "./ui";
+import { WebsiteFacts } from "./WebsiteFacts";
 
 const STAGE_TONE: Record<CrmStage, "neutral" | "accent" | "good" | "warn" | "bad"> = {
   found: "neutral",
@@ -494,6 +495,15 @@ function ContactDetail({ c, jobs, listButton }: { c: CrmContact; jobs: SubJob[];
                   {c.source === "permits" ? "from permit records" : c.source === "places" ? "from Google Maps" : c.source === "signup" ? "when they signed up" : "by hand"}
                 </span>
               </div>
+              {c.website && (
+                <div className="px-1">
+                  <WebsiteFacts
+                    website={c.website}
+                    have={{ email: c.email, phone: c.phone, license: c.license }}
+                    onUse={({ email, phone, license }) => set({ ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(license ? { license } : {}) })}
+                  />
+                </div>
+              )}
             </div>
           </header>
 

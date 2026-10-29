@@ -1,15 +1,18 @@
 "use client";
 
-import { Copy, Download, Loader2, Printer, Send, Sparkles, Square, ThumbsDown, Trophy } from "lucide-react";
-import { useRef, useState } from "react";
+import type { Editor } from "@tiptap/react";
+import { Copy, FileDown, FileText, Loader2, Printer, Send, Sparkles, Square, ThumbsDown, Trophy } from "lucide-react";
+import { useCallback, useState } from "react";
 import { bidTotals } from "@/lib/bid-math";
 import { daysUntil, formatDate, money } from "@/lib/format";
 import type { Level } from "@/lib/fit-score";
+import { findPlaceholders } from "@/lib/proposal-doc";
 import type { Deal } from "@/lib/types";
 import { Markdown } from "../Markdown";
+import { ProposalEditor } from "../ProposalEditor";
 import { useApp, type Tab } from "../state";
 import { useDraft } from "../useDraft";
-import { Badge, Button, Card, Empty, ErrorNote, LevelIcon, Note, Section, TextArea } from "../ui";
+import { Badge, Button, Card, Empty, ErrorNote, LevelIcon, Note, Section } from "../ui";
 import { copyText, downloadText, slug } from "./SubsTab";
 
 const PRINT_CSS = `
@@ -47,6 +50,8 @@ function useReadiness(deal: Deal): Check[] {
   const quoted = deal.subs.some((s) => s.quote);
   const attachments = deal.opportunity.attachments?.length ?? 0;
   const amendments = (deal.opportunity.versions ?? 1) - 1;
+  const blanks = findPlaceholders(deal.proposal ?? "");
+  const forms = deal.details?.noticeId === deal.opportunity.id ? deal.details.forms : [];
   const missing = [
     !profile?.companyName && "company name",
     !profile?.uei && "UEI",
@@ -84,10 +89,19 @@ function useReadiness(deal: Deal): Check[] {
           },
         ]
       : []),
+    ...(deal.proposal
+      ? [
+          blanks.length
+            ? { level: "bad" as const, label: `${blanks.length} blank${blanks.length === 1 ? "" : "s"} left in the proposal`, detail: `${blanks.slice(0, 4).join(", ")}${blanks.length > 4 ? "…" : ""}. They're highlighted below.` }
+            : { level: "good" as const, label: "No blanks left", detail: "Every [placeholder] is filled in." },
+        ]
+      : []),
     {
       level: "ok",
-      label: "Follow the instructions",
-      detail: `Check ${attachments ? `all ${attachments} attachment${attachments === 1 ? "" : "s"}` : "the notice"} for required forms, page limits and how to submit (email or portal).`,
+      label: forms.length ? `Fill in ${forms.length} form${forms.length === 1 ? "" : "s"}` : "Follow the instructions",
+      detail: forms.length
+        ? `${forms.slice(0, 4).join(", ")}${forms.length > 4 ? "…" : ""}. Check the notice for page limits and how to submit.`
+        : `Check ${attachments ? `all ${attachments} attachment${attachments === 1 ? "" : "s"}` : "the notice"} for required forms, page limits and how to submit (email or portal).`,
     },
   ];
 }
@@ -99,14 +113,32 @@ export function ProposalTab({ deal }: { deal: Deal }) {
   const say = useApp((s) => s.say);
   const claude = useApp((s) => Boolean(s.status?.claude));
   const draft = useDraft();
-  const [editing, setEditing] = useState(false);
-  const paper = useRef<HTMLDivElement>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [exporting, setExporting] = useState(false);
   const checks = useReadiness(deal);
+  const onReady = useCallback((e: Editor | null) => setEditor(e), []);
+  const save = useCallback((md: string) => updateDeal(deal.id, (d) => ({ ...d, proposal: md })), [deal.id, updateDeal]);
+
+  async function downloadWord() {
+    if (!editor) return;
+    setExporting(true);
+    try {
+      const [{ Packer }, { proposalDocx }] = await Promise.all([import("docx"), import("@/lib/proposal-doc")]);
+      const blob = await Packer.toBlob(proposalDocx(editor.getJSON(), deal.opportunity.title));
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement("a"), { href: url, download: `proposal-${slug(deal.opportunity.title)}.docx` });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      say(`Couldn't make the Word file: ${(err as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
+  }
   const text = draft.busy ? draft.text : (deal.proposal ?? "");
   const submitted = deal.stage === "submitted" || deal.stage === "won" || deal.stage === "lost";
 
   async function generate() {
-    setEditing(false);
     const out = await draft.run("proposal", deal);
     if (out) updateDeal(deal.id, (d) => ({ ...d, proposal: out }));
   }
@@ -148,28 +180,24 @@ export function ProposalTab({ deal }: { deal: Deal }) {
             )}
             {deal.proposal && !draft.busy && (
               <>
-                <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
-                  {editing ? "Preview" : "Edit"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => copyText(deal.proposal!, say)} aria-label="Copy proposal">
-                  <Copy className="size-3.5" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => downloadText(`proposal-${slug(deal.opportunity.title)}.md`, deal.proposal!)} aria-label="Download proposal">
-                  <Download className="size-3.5" />
+                <Button size="sm" onClick={() => void downloadWord()} busy={exporting} disabled={!editor}>
+                  <FileDown className="size-3.5" /> Word
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    setEditing(false);
-                    // Wait a tick so the preview is rendered if we were editing.
-                    setTimeout(() => {
-                      if (paper.current && !printHtml(paper.current.innerHTML, deal.opportunity.title)) say("Allow pop-ups to print or save as PDF.");
-                    }, 50);
-                  }}
+                  disabled={!editor}
+                  onClick={() => editor && !printHtml(editor.getHTML(), deal.opportunity.title) && say("Allow pop-ups to print or save as PDF.")}
                   aria-label="Print or save as PDF"
+                  title="Print or save as PDF"
                 >
                   <Printer className="size-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => copyText(deal.proposal!, say)} aria-label="Copy proposal" title="Copy as text">
+                  <Copy className="size-3.5" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => downloadText(`proposal-${slug(deal.opportunity.title)}.md`, deal.proposal!)} aria-label="Download as Markdown" title="Download as Markdown (.md)">
+                  <FileText className="size-3.5" />
                 </Button>
               </>
             )}
@@ -179,14 +207,8 @@ export function ProposalTab({ deal }: { deal: Deal }) {
         {draft.error && <ErrorNote>{draft.error}</ErrorNote>}
         {!text && !draft.busy ? (
           <Empty title="No proposal yet">Set your price and pick a subcontractor first, then draft the proposal here.</Empty>
-        ) : editing && !draft.busy ? (
-          <TextArea
-            value={deal.proposal ?? ""}
-            onChange={(e) => updateDeal(deal.id, (d) => ({ ...d, proposal: e.target.value }))}
-            rows={28}
-            aria-label="Proposal"
-            className="font-mono text-[13px]"
-          />
+        ) : !draft.busy ? (
+          <ProposalEditor markdown={deal.proposal ?? ""} onChange={save} onReady={onReady} />
         ) : (
           <div className="rounded-xl border border-line bg-white px-6 py-6 text-[13.5px] text-neutral-900 shadow-sm sm:px-10 sm:py-8 dark:bg-panel dark:text-ink">
             {draft.busy && !text && (
@@ -194,12 +216,10 @@ export function ProposalTab({ deal }: { deal: Deal }) {
                 <Loader2 className="size-4 animate-spin" /> Drafting… this can take a minute.
               </div>
             )}
-            <div ref={paper}>
-              <Markdown source={text} />
-            </div>
+            <Markdown source={text} />
           </div>
         )}
-        {deal.proposal && !draft.busy && <Note>Read it start to finish and replace every [bracketed] placeholder before you send it.</Note>}
+        {deal.proposal && !draft.busy && <Note>Edit it right here. Read it start to finish and replace every highlighted [placeholder] before you send it. Word downloads a .docx; the printer icon saves a PDF.</Note>}
       </Section>
 
       <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
