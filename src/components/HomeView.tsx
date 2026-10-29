@@ -143,7 +143,7 @@ export function HomeView() {
           {WEEK.map((d) => {
             const isToday = d.day === today.day;
             return (
-              <Card key={d.day} className={cx("flex flex-col p-3", isToday && "border-accent ring-1 ring-accent/30")}>
+              <Card key={d.day} className={cx("flex flex-col p-3", isToday && "border-accent/50 bg-accent-soft/40")}>
                 <div className={cx("text-[11px] font-semibold tracking-wide uppercase", isToday ? "text-accent" : "text-ink-3")}>
                   {d.day}
                   {isToday && " · today"}

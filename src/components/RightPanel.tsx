@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, Star } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Star } from "lucide-react";
 import { bidTotals, vsAnchor } from "@/lib/bid-math";
 import { budgetLabel } from "@/lib/bid-details";
 import { STAGES } from "@/lib/deal";
@@ -191,8 +191,8 @@ export function RightPanel({ deal }: { deal: Deal }) {
           )}
         </Card>
         {t.pricePerPeriod === 0 && (
-          <button type="button" onClick={() => setTab("pricing")} className="mt-1.5 text-xs font-medium text-accent hover:underline">
-            Add your sub&apos;s quote →
+          <button type="button" onClick={() => setTab("pricing")} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-ink hover:underline">
+            Add your sub&apos;s quote <ArrowRight className="size-3.5" />
           </button>
         )}
       </div>

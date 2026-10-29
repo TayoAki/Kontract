@@ -78,12 +78,12 @@ export function LeadView({ s, sender, className }: { s: LeadSnapshot; sender?: S
                   <p className="text-[13px] text-ink">{step.text}</p>
                   <div className="mt-1.5 flex flex-wrap gap-2">
                     {step.kind === "call" && s.contractorPhone && (
-                      <a href={`tel:${s.contractorPhone}`} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1 rounded-lg border border-line-strong px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                      <a href={`tel:${s.contractorPhone}`} className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10">
                         <Phone className="size-3.5" /> Call
                       </a>
                     )}
                     {step.kind === "lookup" && search && (
-                      <a href={search} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1 rounded-lg border border-line-strong px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                      <a href={search} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10">
                         <Search className="size-3.5" /> Search their name
                       </a>
                     )}
@@ -93,7 +93,7 @@ export function LeadView({ s, sender, className }: { s: LeadSnapshot; sender?: S
                       </Button>
                     )}
                     {step.kind === "record" && (
-                      <a href={s.recordUrl} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1 rounded-lg border border-line-strong px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                      <a href={s.recordUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10">
                         City record <ExternalLink className="size-3.5" />
                       </a>
                     )}

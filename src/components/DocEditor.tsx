@@ -170,7 +170,7 @@ export function DocEditor({ markdown, onChange, onReady, label }: { markdown: st
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-white text-neutral-900 shadow-sm dark:bg-panel dark:text-ink">
+    <div className="overflow-hidden rounded-xl border border-line bg-panel text-ink shadow-xs">
       {editor && <Toolbar editor={editor} />}
       <div className="px-6 py-6 sm:px-10 sm:py-8">
         <EditorContent editor={editor} />

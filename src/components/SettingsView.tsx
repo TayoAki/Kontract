@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, LogOut } from "lucide-react";
+import { ChevronRight, Download, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/format";
 import type { CompanyProfile } from "@/lib/types";
@@ -195,8 +195,11 @@ export function SettingsView() {
                         </Button>
                       </div>
                     )}
-                    <details className="mt-1.5 text-ink-3">
-                      <summary className="w-max cursor-pointer rounded hover:text-ink-2 pointer-coarse:py-2">Site setup</summary>
+                    <details className="group mt-1.5 text-ink-3">
+                      <summary className="flex w-max cursor-pointer list-none items-center gap-1 rounded hover:text-ink-2 pointer-coarse:py-2 [&::-webkit-details-marker]:hidden">
+                        <ChevronRight className="size-3.5 transition-transform duration-150 group-open:rotate-90" aria-hidden />
+                        Site setup
+                      </summary>
                       <p className="mt-1">
                         {i.setup}
                         {i.key === "claude" && status?.model && on && <> Using {status.model}.</>}

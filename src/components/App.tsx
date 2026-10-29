@@ -100,7 +100,7 @@ function Toast() {
   }, [toast, action, say]);
   if (!toast) return null;
   return (
-    <div role="status" className="fixed bottom-20 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg bg-ink px-4 py-2.5 text-sm text-bg shadow-lg md:bottom-10">
+    <div role="status" className="fixed bottom-20 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-panel px-4 py-2.5 text-sm font-medium text-ink shadow-lg md:bottom-10">
       <span className="min-w-0">{toast}</span>
       {action && (
         <button
@@ -109,12 +109,12 @@ function Toast() {
             action.run();
             say(null);
           }}
-          className="shrink-0 rounded-md px-2 py-1 font-semibold underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bg"
+          className="shrink-0 rounded-md border border-line px-2.5 py-1 text-xs font-medium shadow-xs hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {action.label}
         </button>
       )}
-      <button type="button" onClick={() => say(null)} aria-label="Dismiss" className="grid size-8 shrink-0 place-items-center rounded-md opacity-70 hover:opacity-100">
+      <button type="button" onClick={() => say(null)} aria-label="Dismiss" className="grid size-8 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-panel-2 hover:text-ink">
         <X className="size-4" />
       </button>
     </div>

@@ -57,7 +57,7 @@ export function LeftRail() {
 
   return (
     <nav aria-label="Main" className="hidden w-16 shrink-0 flex-col items-center gap-0.5 border-r border-line bg-panel py-3 md:flex">
-      <div className="mb-3 grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent" aria-label="Kontract">
+      <div className="mb-3 grid size-8 place-items-center rounded-md bg-accent text-sm font-bold text-on-accent shadow-xs" aria-label="Kontract">
         K
       </div>
       {items.map(({ view: v, label, short, icon: Icon }) => {
@@ -71,11 +71,10 @@ export function LeftRail() {
             aria-current={active ? "page" : undefined}
             onClick={() => setView(v)}
             className={cx(
-              "relative flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors",
-              active ? "bg-accent-soft text-accent-ink" : "text-ink-2 hover:bg-panel-2 hover:text-ink",
+              "relative flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-md transition-colors",
+              active ? "bg-accent-soft font-semibold text-accent-ink" : "text-ink-2 hover:bg-panel-2 hover:text-ink",
             )}
           >
-            {active && <span className="absolute top-2 bottom-2 -left-2 w-[3px] rounded-r bg-accent" aria-hidden />}
             <Icon className="size-5" />
             <span className="text-[11px] leading-none font-medium">{short}</span>
             {v === "alerts" && <DueCount n={dueSoon} className="top-0.5 right-1.5" />}
@@ -103,9 +102,9 @@ export function BottomNav() {
             aria-label={label}
             aria-current={active ? "page" : undefined}
             onClick={() => setView(v)}
-            className={cx("relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1", active ? "text-accent-ink" : "text-ink-2")}
+            className={cx("relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1", active ? "font-semibold text-accent-ink" : "text-ink-2")}
           >
-            {active && <span className="absolute inset-x-3 top-0 h-[3px] rounded-b bg-accent" aria-hidden />}
+            {active && <span className="absolute inset-x-3 top-0 h-0.5 rounded-b-full bg-accent" aria-hidden />}
             <Icon className="size-5" />
             <span className="max-w-full truncate px-0.5 text-[11px] leading-none font-medium">{short}</span>
             {v === "alerts" && <DueCount n={dueSoon} className="top-1.5 left-1/2 ml-1" />}

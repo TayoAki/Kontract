@@ -21,8 +21,8 @@ export function Workspace({ mode }: { mode: "search" | "bids" }) {
       <div
         className={cx(
           "z-30 w-[300px] shrink-0 border-r border-line bg-panel",
-          "max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:shadow-xl max-lg:transition-transform",
-          showDetail ? (sidebarOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full") : "max-lg:static max-lg:w-full max-lg:shadow-none",
+          "max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:transition-transform",
+          showDetail ? (sidebarOpen ? "max-lg:translate-x-0 max-lg:shadow-lg" : "max-lg:-translate-x-full") : "max-lg:static max-lg:w-full max-lg:shadow-none",
         )}
       >
         <Sidebar mode={mode} />

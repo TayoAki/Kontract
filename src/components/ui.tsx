@@ -4,7 +4,7 @@ import { AlertCircle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useState } from "react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
-import { hueFor, initials } from "@/lib/format";
+import { initials } from "@/lib/format";
 import type { Level } from "@/lib/fit-score";
 
 /** Join class names; later Tailwind classes override earlier ones (e.g. h-8 beats h-9). */
@@ -27,14 +27,14 @@ export function Button({
       {...props}
       disabled={props.disabled || busy}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors",
+        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow]",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50",
         // Touch screens get finger-sized targets; mouse users keep the compact sizes.
-        size === "sm" ? "h-7 px-2.5 text-xs pointer-coarse:h-10 pointer-coarse:px-3" : "h-9 px-3.5 text-sm pointer-coarse:h-11",
-        variant === "primary" && "bg-accent text-on-accent hover:bg-accent-ink",
-        variant === "secondary" && "border border-line-strong bg-panel text-ink hover:bg-panel-2",
+        size === "sm" ? "h-8 px-3 text-xs pointer-coarse:h-10" : "h-9 px-4 text-sm pointer-coarse:h-11",
+        variant === "primary" && "bg-accent text-on-accent shadow-xs hover:bg-accent-ink",
+        variant === "secondary" && "border border-line bg-panel text-ink shadow-xs hover:bg-panel-2",
         variant === "ghost" && "text-ink-2 hover:bg-panel-2 hover:text-ink",
-        variant === "danger" && "border border-line-strong bg-panel text-bad hover:bg-bad-soft",
+        variant === "danger" && "border border-line bg-panel text-bad shadow-xs hover:bg-bad-soft",
         className,
       )}
     >
@@ -45,7 +45,7 @@ export function Button({
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx("rounded-xl border border-line bg-panel", className)}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-panel shadow-xs", className)}>{children}</div>;
 }
 
 export function Section({
@@ -127,18 +127,11 @@ export function dueText(days: number | null): string {
 }
 
 export function Avatar({ name, size = 32, className }: { name: string; size?: number; className?: string }) {
-  const hue = hueFor(name);
   return (
     <span
       aria-hidden
-      className={cx("grid shrink-0 place-items-center rounded-full font-semibold", className)}
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.36),
-        background: `hsl(${hue} 70% 50% / 0.16)`,
-        color: `hsl(${hue} 55% 42%)`,
-      }}
+      className={cx("grid shrink-0 place-items-center rounded-full bg-panel-2 font-semibold text-ink-2", className)}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
     >
       {initials(name)}
     </span>
@@ -147,7 +140,7 @@ export function Avatar({ name, size = 32, className }: { name: string; size?: nu
 
 const fieldBase =
   // 16px on touch screens so phones don't zoom in when a field is focused.
-  "w-full rounded-lg border border-line-strong bg-panel px-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 pointer-coarse:text-base";
+  "w-full rounded-md border border-line-strong bg-panel px-3 text-sm text-ink shadow-xs transition-[color,box-shadow] placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-[3px] focus:ring-accent/20 pointer-coarse:text-base";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(fieldBase, "h-9 pointer-coarse:h-11", className)} />;
@@ -183,7 +176,7 @@ export function Toggle({ checked, onChange, children }: { checked: boolean; onCh
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cx(
-          "relative h-[18px] w-8 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+          "relative h-[18px] w-8 shrink-0 rounded-full shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
           checked ? "bg-accent" : "bg-line-strong",
         )}
       >
@@ -202,7 +195,7 @@ export function Chip({ active, onClick, children }: { active?: boolean; onClick?
       aria-pressed={active}
       className={cx(
         "inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors pointer-coarse:h-10 pointer-coarse:px-3.5",
-        active ? "border-accent bg-accent-soft text-accent-ink" : "border-line-strong bg-panel text-ink-2 hover:bg-panel-2",
+        active ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-line bg-panel text-ink-2 shadow-xs hover:bg-panel-2 hover:text-ink",
       )}
     >
       {children}
@@ -212,7 +205,7 @@ export function Chip({ active, onClick, children }: { active?: boolean; onClick?
 
 export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "good" | "bad" }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-3.5 py-3">
+    <div className="rounded-xl border border-line bg-panel px-3.5 py-3 shadow-xs">
       <div className="text-xs text-ink-2">{label}</div>
       <div className={cx("mt-1 text-lg font-semibold tabular-nums", tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : "text-ink")}>{value}</div>
       {hint && <div className="mt-0.5 text-[11px] text-ink-3">{hint}</div>}

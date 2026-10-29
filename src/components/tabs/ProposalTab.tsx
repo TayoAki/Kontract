@@ -187,7 +187,7 @@ export function ProposalTab({ deal }: { deal: Deal }) {
         ) : !draft.busy ? (
           <DocEditor markdown={deal.proposal ?? ""} onChange={save} onReady={onReady} label="Proposal" />
         ) : (
-          <div className="rounded-xl border border-line bg-white px-6 py-6 text-[13.5px] text-neutral-900 shadow-sm sm:px-10 sm:py-8 dark:bg-panel dark:text-ink">
+          <div className="rounded-xl border border-line bg-panel px-6 py-6 text-[13.5px] text-ink shadow-xs sm:px-10 sm:py-8">
             {draft.busy && !text && (
               <div className="flex items-center gap-2 text-ink-3">
                 <Loader2 className="size-4 animate-spin" /> Drafting… this can take a minute.

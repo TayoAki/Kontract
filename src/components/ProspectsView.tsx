@@ -116,7 +116,7 @@ function ProspectCard({ p, onStatus }: { p: Prospect; onStatus: (s: ProspectStat
               <a
                 href={`mailto:${email}?subject=${encodeURIComponent(p.outreach.subject)}&body=${encodeURIComponent(p.outreach.body)}`}
                 onClick={() => p.status === "new" && onStatus("contacted")}
-                className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10"
               >
                 <Mail className="size-3.5" /> Open in email
               </a>

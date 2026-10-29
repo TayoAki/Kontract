@@ -261,7 +261,7 @@ function Invite({ permit, trade, recipient }: { permit: Permit; trade: TradeId; 
           {recipient?.email && (
             <a
               href={`mailto:${recipient.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
-              className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10"
             >
               <Mail className="size-3.5" /> Email
             </a>
@@ -421,12 +421,12 @@ function PassLead({ permit, trade }: { permit: Permit; trade: TradeId }) {
                 <Copy className="size-3.5" /> Copy message
               </Button>
               {made.email && (
-                <a href={`mailto:${made.email}?subject=${encodeURIComponent(made.subject)}&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                <a href={`mailto:${made.email}?subject=${encodeURIComponent(made.subject)}&body=${encodeURIComponent(made.message)}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10">
                   <Mail className="size-3.5" /> Email
                 </a>
               )}
               {contact?.phone && (
-                <a href={`sms:${contact.phone}?&body=${encodeURIComponent(made.message)}`} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+                <a href={`sms:${contact.phone}?&body=${encodeURIComponent(made.message)}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10">
                   <Phone className="size-3.5" /> Text
                 </a>
               )}
@@ -491,7 +491,7 @@ export function PermitDetail({ permit, listButton }: { permit: Permit; listButto
             href={permit.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10"
           >
             <ExternalLink className="size-3.5" /> {permit.url === feed?.datasetUrl ? "City data" : "City record"}
           </a>

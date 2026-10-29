@@ -48,19 +48,19 @@ export function digestEmail(o: DigestOptions): { subject: string; text: string; 
   ]
     .filter((l, k, a) => !(l === "" && a[k - 1] === ""))
     .join("\n");
-  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;color:#1f2328">
+  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;color:#17221b">
 <h2 style="font-size:18px;margin:0 0 12px">${esc(subject)}</h2>
 ${items
   .map(
-    (i) => `<div style="padding:10px 0;border-top:1px solid #e5e7eb">
+    (i) => `<div style="padding:10px 0;border-top:1px solid #d3d9cd">
 <div style="font-weight:600;font-size:14px">${esc(i.title)}</div>
-<div style="font-size:13px;color:#57606a;margin-top:2px">Issued ${esc(i.date)}. ${esc(i.why)}</div>
-<a href="${esc(i.url)}" style="font-size:13px;color:#2563eb">City record</a>
+<div style="font-size:13px;color:#435048;margin-top:2px">Issued ${esc(i.date)}. ${esc(i.why)}</div>
+<a href="${esc(i.url)}" style="font-size:13px;color:#1f5f3a">City record</a>
 </div>`,
   )
   .join("\n")}
-${more ? `<p style="font-size:13px;background:#eff6ff;padding:10px;border-radius:8px">${esc(more)}</p>` : ""}
-<p style="font-size:13px"><a href="${esc(o.appUrl)}" style="color:#2563eb">Open Kontract</a> to see every lead and the jobs you've been asked to quote.</p>
+${more ? `<p style="font-size:13px;background:#e6efe7;padding:10px;border-radius:8px">${esc(more)}</p>` : ""}
+<p style="font-size:13px"><a href="${esc(o.appUrl)}" style="color:#1f5f3a">Open Kontract</a> to see every lead and the jobs you've been asked to quote.</p>
 </div>`;
   return { subject, text, html };
 }

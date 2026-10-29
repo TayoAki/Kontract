@@ -356,7 +356,7 @@ function OutreachModal({ deal, sub, onClose }: { deal: Deal; sub: Subcontractor;
       aria-label={`Outreach for ${sub.name}`}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-xl border border-line bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/30"
+      className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-lg border border-line bg-panel p-0 text-ink shadow-lg backdrop:bg-black/40"
     >
       <div className="flex max-h-[85dvh] flex-col">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
@@ -596,7 +596,7 @@ function QuoteLink({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
       </span>
       <div className="ml-auto flex flex-wrap gap-1.5">
         {url && (
-          <a href={`${url}?preview=1`} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg px-2.5 text-xs font-medium text-ink-2 hover:bg-panel-2 hover:text-ink">
+          <a href={`${url}?preview=1`} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-ink-2 hover:bg-panel-2 hover:text-ink pointer-coarse:h-10">
             <Eye className="size-3.5" /> Preview
           </a>
         )}
@@ -604,7 +604,7 @@ function QuoteLink({ deal, sub }: { deal: Deal; sub: Subcontractor }) {
           <Copy className="size-3.5" /> {url ? "Copy link" : "Get quote link"}
         </Button>
         {mail && (
-          <a href={mail} className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1.5 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2">
+          <a href={mail} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10">
             Email it
           </a>
         )}

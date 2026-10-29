@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, FileSignature, Info, Users } from "lucide-react";
+import { BarChart3, Check, FileSignature, Info, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { formatDate } from "@/lib/format";
 import type { Deal } from "@/lib/types";
@@ -22,9 +22,9 @@ const TABS: { id: Tab; label: string; short: string; icon: ComponentType<{ class
 export function Detail({ deal, listButton }: { deal: Deal; listButton?: ReactNode }) {
   const tab = useApp((s) => s.tab);
   const setTab = useApp((s) => s.setTab);
-  const counts: Partial<Record<Tab, string>> = {
+  const counts: Partial<Record<Tab, ReactNode>> = {
     subs: deal.subs.length ? String(deal.subs.length) : undefined,
-    proposal: deal.proposal ? "✓" : undefined,
+    proposal: deal.proposal ? <Check className="size-3" strokeWidth={3} aria-label="Drafted" /> : undefined,
   };
 
   return (
@@ -32,8 +32,8 @@ export function Detail({ deal, listButton }: { deal: Deal; listButton?: ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 border-b border-line bg-panel px-3 py-2">
           {listButton}
-          <div role="tablist" aria-label="Opportunity" className="flex min-w-0 flex-1 overflow-hidden rounded-lg border border-line">
-            {TABS.map(({ id, label, short, icon: Icon }, i) => (
+          <div role="tablist" aria-label="Opportunity" className="flex h-9 min-w-0 flex-1 rounded-lg bg-panel-2 p-[3px]">
+            {TABS.map(({ id, label, short, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -41,17 +41,16 @@ export function Detail({ deal, listButton }: { deal: Deal; listButton?: ReactNod
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
                 className={cx(
-                  "flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 px-2 text-[13px] font-medium transition-colors",
-                  i > 0 && "border-l border-line",
+                  "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-[13px] font-medium transition-[color,box-shadow]",
                   tab === id && "max-sm:flex-[2.4]",
-                  tab === id ? "bg-panel-2 text-ink shadow-[inset_0_-2px_0_var(--accent)]" : "text-ink-2 hover:bg-panel-2/60 hover:text-ink",
+                  tab === id ? "bg-panel text-ink shadow-sm" : "text-ink-2 hover:text-ink",
                 )}
               >
                 <Icon className="size-4 shrink-0" />
                 <span className="truncate max-md:hidden">{label}</span>
                 {/* On phones only the active tab shows its name; the rest are icons. */}
                 <span className={cx("truncate md:hidden", tab !== id && "max-sm:sr-only")}>{short}</span>
-                {counts[id] && <span className="rounded bg-accent-soft px-1 text-[11px] leading-4 text-accent-ink">{counts[id]}</span>}
+                {counts[id] && <span className="inline-flex h-4 items-center rounded bg-accent-soft px-1 text-[11px] leading-4 font-medium text-accent-ink">{counts[id]}</span>}
               </button>
             ))}
           </div>

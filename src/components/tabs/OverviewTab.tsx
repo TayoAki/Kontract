@@ -166,7 +166,7 @@ export function OverviewTab({ deal }: { deal: Deal }) {
               href={o.samUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-7 items-center pointer-coarse:h-10 gap-1 rounded-lg border border-line-strong bg-panel px-2.5 text-xs font-medium text-ink hover:bg-panel-2"
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-panel-2 pointer-coarse:h-10"
             >
               {o.portal ?? "SAM.gov"} <ExternalLink className="size-3.5" />
             </a>
