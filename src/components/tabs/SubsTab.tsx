@@ -1,13 +1,16 @@
 "use client";
 
-import { Check, ClipboardList, Copy, Download, ExternalLink, Globe, Link2, Loader2, MapPin, MessageSquareText, Phone, Plus, Search, Sparkles, Square, Star, Trash2, Users, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import type { Editor } from "@tiptap/react";
+import { Check, ClipboardList, Copy, ExternalLink, FileDown, Globe, Link2, Loader2, MapPin, MessageSquareText, Phone, Plus, Printer, Search, Sparkles, Square, Star, Trash2, Users, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { companyKey, crmStageLabel } from "@/lib/crm";
 import { formatDate, money, placeLabel, uid } from "@/lib/format";
 import { workById, workForJob } from "@/lib/permit-trades";
 import { recipients } from "@/lib/pricing-stats";
 import { rulesBreakdown } from "@/lib/rules";
 import type { Deal, PermitContractor, SubStatus, Subcontractor, Vetting, WorkId } from "@/lib/types";
+import { copyDoc, downloadWord, printHtml, slug } from "../doc-actions";
+import { DocEditor } from "../DocEditor";
 import { Markdown } from "../Markdown";
 import { contractorDetail, Insured } from "../PermitDetail";
 import { api, useApp } from "../state";
@@ -51,7 +54,7 @@ export function downloadText(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+export { slug };
 
 function toSub(f: Found): Subcontractor {
   return {
@@ -72,20 +75,35 @@ function ScopeOfWork({ deal }: { deal: Deal }) {
   const say = useApp((s) => s.say);
   const claude = useApp((s) => Boolean(s.status?.claude));
   const draft = useDraft();
-  const [editing, setEditing] = useState(false);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const onReady = useCallback((e: Editor | null) => setEditor(e), []);
+  const save = useCallback((md: string) => updateDeal(deal.id, (d) => ({ ...d, sow: md })), [deal.id, updateDeal]);
   const text = draft.busy ? draft.text : (deal.sow ?? "");
 
   async function generate() {
-    setEditing(false);
+    if (deal.sow && !window.confirm("Replace your scope of work with a new draft? Your edits will be lost.")) return;
     const out = await draft.run("sow", deal);
     if (out) updateDeal(deal.id, (d) => ({ ...d, sow: out, stage: d.stage === "found" ? "sourcing" : d.stage }));
+  }
+
+  async function word() {
+    if (!editor) return;
+    setExporting(true);
+    try {
+      await downloadWord(editor, `scope-of-work-${slug(deal.opportunity.title)}.docx`, `Scope of work: ${deal.opportunity.title}`);
+    } catch (err) {
+      say(`Couldn't make the Word file: ${(err as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
     <Section
       step={1}
       title="Scope of work to send subs"
-      subtitle="What you email local companies so they can quote. No government contacts or pricing in it."
+      subtitle="What local companies read before they quote. Edit it here. No government contacts or pricing in it."
       actions={
         <>
           {draft.busy ? (
@@ -93,20 +111,20 @@ function ScopeOfWork({ deal }: { deal: Deal }) {
               <Square className="size-3.5" /> Stop
             </Button>
           ) : (
-            <Button size="sm" variant={deal.sow ? "secondary" : "primary"} onClick={() => void generate()}>
+            <Button size="sm" variant={deal.sow ? "ghost" : "primary"} onClick={() => void generate()}>
               <Sparkles className="size-3.5" /> {deal.sow ? "Rewrite" : claude ? "Write it with Claude" : "Fill in a template"}
             </Button>
           )}
           {deal.sow && !draft.busy && (
             <>
-              <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
-                {editing ? "Preview" : "Edit"}
+              <Button size="sm" disabled={!editor} onClick={() => editor && void copyDoc(editor).then((ok) => say(ok ? "Copied. Paste it into your email." : "Couldn't copy. Select the text and copy it instead."))}>
+                <Copy className="size-3.5" /> Copy for email
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => copyText(deal.sow!, say)} aria-label="Copy scope of work">
-                <Copy className="size-3.5" />
+              <Button size="sm" variant="ghost" onClick={() => void word()} busy={exporting} disabled={!editor} title="Download as Word to attach">
+                <FileDown className="size-3.5" /> Word
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => downloadText(`scope-of-work-${slug(deal.opportunity.title)}.md`, deal.sow!)} aria-label="Download scope of work">
-                <Download className="size-3.5" />
+              <Button size="sm" variant="ghost" disabled={!editor} onClick={() => editor && !printHtml(editor.getHTML(), `Scope of work: ${deal.opportunity.title}`) && say("Allow pop-ups to print or save as PDF.")} aria-label="Print or save as PDF" title="Print or save as PDF">
+                <Printer className="size-3.5" /> PDF
               </Button>
             </>
           )}
@@ -115,18 +133,12 @@ function ScopeOfWork({ deal }: { deal: Deal }) {
     >
       {draft.error && <ErrorNote>{draft.error}</ErrorNote>}
       {!text && !draft.busy ? (
-        <Empty title="No scope of work yet">Generate one, then email it to every company on your shortlist.</Empty>
-      ) : editing && !draft.busy ? (
-        <TextArea
-          value={deal.sow ?? ""}
-          onChange={(e) => updateDeal(deal.id, (d) => ({ ...d, sow: e.target.value }))}
-          rows={18}
-          aria-label="Scope of work"
-          className="font-mono text-[13px]"
-        />
+        <Empty title="No scope of work yet">Fill one in from the notice, edit it, then send it with each quote link.</Empty>
+      ) : !draft.busy ? (
+        <DocEditor markdown={deal.sow ?? ""} onChange={save} onReady={onReady} label="Scope of work" />
       ) : (
         <Card className="scroll-thin max-h-[480px] overflow-y-auto px-5 py-4 text-[13.5px] text-ink">
-          {draft.busy && !text && (
+          {!text && (
             <div className="flex items-center gap-2 text-ink-3">
               <Loader2 className="size-4 animate-spin" /> Writing…
             </div>
@@ -134,6 +146,7 @@ function ScopeOfWork({ deal }: { deal: Deal }) {
           <Markdown source={text} />
         </Card>
       )}
+      {deal.sow && !draft.busy && <p className="text-xs text-ink-3">Subs see this on their quote link, so edits here change what they read.</p>}
     </Section>
   );
 }
@@ -600,7 +613,7 @@ function PermitSubs({ deal, onAdd }: { deal: Deal; onAdd: (f: Found & { trade?: 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
           <ClipboardList className="size-4 text-ink-3" />
-          Pulling {label ? label.label.toLowerCase() : ""} permits near the job
+          {label ? `Pulling ${label.label.toLowerCase()} permits near the job` : "Businesses pulling permits near the job"}
         </h3>
         {suggested.length > 1 && (
           <div className="flex flex-wrap gap-1">

@@ -9,31 +9,12 @@ import type { Level } from "@/lib/fit-score";
 import { findPlaceholders } from "@/lib/proposal-doc";
 import type { Deal } from "@/lib/types";
 import { Markdown } from "../Markdown";
-import { ProposalEditor } from "../ProposalEditor";
+import { DocEditor } from "../DocEditor";
 import { useApp, type Tab } from "../state";
 import { useDraft } from "../useDraft";
 import { Badge, Button, Card, Empty, ErrorNote, LevelIcon, Note, Section } from "../ui";
-import { copyText, downloadText, slug } from "./SubsTab";
-
-const PRINT_CSS = `
-  body { font: 13.5px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #111; max-width: 760px; margin: 40px auto; padding: 0 24px; }
-  h2 { font-size: 22px; margin: 0 0 12px; } h3 { font-size: 16px; margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; } h4 { font-size: 14px; margin: 16px 0 6px; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; } th, td { border-bottom: 1px solid #ddd; padding: 5px 8px; text-align: left; vertical-align: top; }
-  th { border-bottom: 1px solid #999; } .text-right { text-align: right; } ul, ol { padding-left: 20px; } li { margin: 3px 0; } hr { border: 0; border-top: 1px solid #ddd; }
-  @page { margin: 18mm; }
-`;
-
-/** Print the rendered proposal in its own window, so it isn't clipped by the app layout. */
-function printHtml(html: string, title: string): boolean {
-  const w = window.open("", "_blank", "width=900,height=1000");
-  if (!w) return false;
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><style>${PRINT_CSS}</style></head><body>${html}</body></html>`);
-  w.document.title = title;
-  w.document.close();
-  w.focus();
-  w.print();
-  return true;
-}
+import { copyDoc, downloadWord as wordFile, printHtml, slug } from "../doc-actions";
+import { downloadText } from "./SubsTab";
 
 interface Check {
   level: Level;
@@ -123,12 +104,7 @@ export function ProposalTab({ deal }: { deal: Deal }) {
     if (!editor) return;
     setExporting(true);
     try {
-      const [{ Packer }, { proposalDocx }] = await Promise.all([import("docx"), import("@/lib/proposal-doc")]);
-      const blob = await Packer.toBlob(proposalDocx(editor.getJSON(), deal.opportunity.title));
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement("a"), { href: url, download: `proposal-${slug(deal.opportunity.title)}.docx` });
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      await wordFile(editor, `proposal-${slug(deal.opportunity.title)}.docx`, deal.opportunity.title);
     } catch (err) {
       say(`Couldn't make the Word file: ${(err as Error).message}`);
     } finally {
@@ -191,13 +167,13 @@ export function ProposalTab({ deal }: { deal: Deal }) {
                   aria-label="Print or save as PDF"
                   title="Print or save as PDF"
                 >
-                  <Printer className="size-3.5" />
+                  <Printer className="size-3.5" /> PDF
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => copyText(deal.proposal!, say)} aria-label="Copy proposal" title="Copy as text">
-                  <Copy className="size-3.5" />
+                <Button size="sm" variant="ghost" disabled={!editor} onClick={() => editor && void copyDoc(editor).then((ok) => say(ok ? "Copied with formatting" : "Couldn't copy. Select the text and copy it instead."))} aria-label="Copy proposal" title="Copy (pastes formatted into email or Word)">
+                  <Copy className="size-3.5" /> Copy
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => downloadText(`proposal-${slug(deal.opportunity.title)}.md`, deal.proposal!)} aria-label="Download as Markdown" title="Download as Markdown (.md)">
-                  <FileText className="size-3.5" />
+                  <FileText className="size-3.5" /> .md
                 </Button>
               </>
             )}
@@ -208,7 +184,7 @@ export function ProposalTab({ deal }: { deal: Deal }) {
         {!text && !draft.busy ? (
           <Empty title="No proposal yet">Set your price and pick a subcontractor first, then draft the proposal here.</Empty>
         ) : !draft.busy ? (
-          <ProposalEditor markdown={deal.proposal ?? ""} onChange={save} onReady={onReady} />
+          <DocEditor markdown={deal.proposal ?? ""} onChange={save} onReady={onReady} label="Proposal" />
         ) : (
           <div className="rounded-xl border border-line bg-white px-6 py-6 text-[13.5px] text-neutral-900 shadow-sm sm:px-10 sm:py-8 dark:bg-panel dark:text-ink">
             {draft.busy && !text && (

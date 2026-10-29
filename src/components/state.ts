@@ -232,8 +232,8 @@ export const useApp = create<AppState>((set, get) => ({
     ]);
     set({
       account,
-      // Subcontractors start on their leads; primes on search.
-      ...(account?.role === "sub" ? { view: "leads" as View } : {}),
+      // Subcontractors start on their leads; a brand-new prime on Home (to get set up); everyone else on search.
+      ...(account?.role === "sub" ? { view: "leads" as View } : deals.length === 0 && !profile?.companyName ? { view: "home" as View } : {}),
       status,
       profile,
       deals: Object.fromEntries(deals.map((d) => [d.id, d])),

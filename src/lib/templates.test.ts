@@ -61,3 +61,9 @@ test("proposal asks to acknowledge the amendments SAM.gov posted", () => {
   d.opportunity = { ...d.opportunity, versions: 3 };
   assert.match(proposalTemplate(d, profile, now), /Acknowledges all 2 amendment\(s\)/);
 });
+
+test("customerDetails keeps the work, drops contracting boilerplate and contacts", async () => {
+  const { customerDetails } = await import("./templates.ts");
+  const d = "Description This is a combined synopsis/solicitation for commercial services prepared in accordance with the format in FAR subpart 12.201-1. Simplified Procedures , as supplemented with additional information included in this notice. The FSC/PSC is: S201 Housekeeping Custodial Janitorial. This solicitation is set-aside for SDVOSB. The NAICS code is 561720. The VA Bedford Healthcare System, 200 Springs Road, Bedford, MA 01730 is seeking vendors that can provide window cleaning services for the campus. Windows must be cleaned inside and out twice a year. Questions to earl.johnson1@va.gov or 781-687-2000.";
+  assert.equal(customerDetails(d), "The VA Bedford Healthcare System, 200 Springs Road, Bedford, MA 01730 is seeking vendors that can provide window cleaning services for the campus. Windows must be cleaned inside and out twice a year.");
+});

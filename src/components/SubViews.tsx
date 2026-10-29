@@ -72,7 +72,7 @@ function LeadCard({ p, trade }: { p: Permit; trade: TradeId }) {
                 {[p.city, p.zip].filter(Boolean).join(" ")}
               </span>
               <span>{p.type.split(" · ")[0]}</span>
-              <span>Issued {relDay(p.issuedDate).toLowerCase()}</span>
+              <span>Issued {relDay(p.issuedDate).replace(/^(Today|Yesterday)$/, (w) => w.toLowerCase())}</span>
             </div>
           </div>
           <span className="inline-flex h-7 shrink-0 items-center gap-1 text-xs font-medium text-accent">
@@ -192,7 +192,7 @@ export function SubLeadsView() {
               <span className="font-semibold">{data.availableThisWeek} leads</span> this week in {marketName(data.market)}. You&apos;re seeing {data.leads.length}. Get every one the morning it&apos;s filed.
             </div>
             <Button variant="primary" size="sm" onClick={() => void upgrade()} busy={busy} disabled={!plans?.payments} title={plans?.payments ? undefined : "Payments aren't set up yet"}>
-              Daily leads · {money(plans?.dailyPrice ?? 99)}/mo
+              {plans?.payments ? `Daily leads · ${money(plans.dailyPrice)}/mo` : "Daily plan coming soon"}
             </Button>
           </Card>
         )}

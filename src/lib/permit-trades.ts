@@ -239,7 +239,8 @@ const TITLE_WORK: [RegExp, WorkId][] = [
   [/\b(landscap\w*|grounds|mowing|lawn|tree (trimming|removal)|irrigation)\b/i, "landscaping"],
   [/\b(paving|concrete|sidewalk|asphalt|parking lot)\b/i, "patio"],
   [/\b(demoli\w*|debris|abatement|junk)\b/i, "junk"],
-  [/\b(windows?|glazing|doors?)\b/i, "windows"],
+  // "Window washing" is a cleaning job, not window installers.
+  [/\b(windows?|glazing|doors?)\b(?!\s+(?:wash|clean))/i, "windows"],
   [/\b(solar|photovoltaic)\b/i, "solar"],
   [/\b(gutters?)\b/i, "gutters"],
   [/\b(renovat\w*|remodel\w*|construction|repairs?|alteration|build-?out)\b/i, "general"],

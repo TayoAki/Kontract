@@ -4,6 +4,7 @@ import { ArrowRight, CalendarClock, ExternalLink, Loader2, Mail, MapPin, Phone, 
 import { useEffect, useState } from "react";
 import { isSmallBusinessSetAside } from "@/lib/fit-score";
 import { daysUntil, formatDate, placeLabel } from "@/lib/format";
+import { workPlaceFromText } from "@/lib/place-from-text";
 import { rulesBreakdown } from "@/lib/rules";
 import type { Breakdown, Deal } from "@/lib/types";
 import { useApp, useIsTracked } from "../state";
@@ -84,7 +85,14 @@ function DescriptionBlock({ deal }: { deal: Deal }) {
       .then(async (res) => {
         const body = (await res.json()) as { description?: string; error?: string };
         if (!res.ok) throw new Error(body.error || "Couldn't load the description");
-        if (!cancelled) updateDeal(deal.id, (d) => ({ ...d, opportunity: { ...d.opportunity, description: body.description ?? "" } }), { track: false });
+        if (cancelled) return;
+        const text = body.description ?? "";
+        const site = deal.opportunity.placeFromOffice ? workPlaceFromText(text) : null;
+        updateDeal(
+          deal.id,
+          (d) => ({ ...d, opportunity: { ...d.opportunity, description: text, ...(site ? { placeOfPerformance: site, placeFromOffice: undefined, placeFromNotice: true } : {}) } }),
+          { track: false },
+        );
       })
       .catch((err: Error) => !cancelled && setError(err.message));
     return () => {
@@ -178,7 +186,13 @@ export function OverviewTab({ deal }: { deal: Deal }) {
           icon={<MapPin className="size-5" />}
           label={o.placeFromOffice ? "Contracting office" : "Where the work is"}
           value={placeLabel(o.placeOfPerformance)}
-          sub={o.placeFromOffice ? "The notice doesn't say where the work is. Check the description." : "Your subcontractor should be local to here"}
+          sub={
+            o.placeFromOffice
+              ? "The notice doesn't say where the work is. Check the description."
+              : o.placeFromNotice
+                ? "From the notice text. Your subcontractor should be local to here."
+                : "Your subcontractor should be local to here"
+          }
         />
         <FactCard
           icon={<ShieldCheck className="size-5" />}

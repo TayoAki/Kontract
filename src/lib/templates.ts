@@ -24,8 +24,9 @@ export function workSummary(deal: Deal, now: Date = new Date()): string {
   const b = deal.breakdown ?? rulesBreakdown(o, now);
   const what = cleanTitle(o.title).toLowerCase() || "the work described";
   const per = deal.pricing.periodLabel === "year" ? " per year" : "";
+  // "1 job" says nothing; only real quantities (40 visits, 12 months) are worth stating.
   const qty = deal.pricing.lines
-    .filter((l) => l.quantity > 0)
+    .filter((l) => l.quantity > 0 && !(l.quantity === 1 && /^(job|lump sum|ls|each)$/i.test(l.unit)))
     .map((l) => `${l.quantity.toLocaleString()} ${plural(l.quantity, l.unit)}${per}`)
     .join(", ");
   const term = /^check the notice/i.test(b.contractLength) ? "" : ` Term: ${b.contractLength.charAt(0).toLowerCase()}${b.contractLength.slice(1)}.`;
@@ -49,6 +50,28 @@ export function priceTable(deal: Deal): string {
     lines.push(`| **Total, ${pricing.periods} years** | | | | **${money(t.priceTotal, { cents: true })}** |`);
   }
   return lines.join("\n");
+}
+
+/**
+ * The parts of the notice a sub needs: what, where, when. Contracting boilerplate
+ * (FAR citations, set-asides, how to submit an offer) is dropped.
+ */
+export function customerDetails(description: string | undefined, max = 1800): string {
+  if (!description) return "";
+  const sentences = description.replace(/\s+/g, " ").split(/(?<=[.!?])\s+(?=[A-Z0-9])/);
+  const boiler = /\bFAR\b|federal acquisition|DFARS|VAAR|\bclause|provision|set-aside|set aside|\bNAICS\b|size standard|\bSAM\b|SAM\.gov|solicitation (?:number|is issued)|request for (?:quote|quotation|proposal)|\bRFQ\b|\bRFP\b|combined synopsis|offeror|quotes? (?:are|shall|must|will) be|submit|e-?mail|point of contact|contracting (?:officer|specialist|office)|wage determination|in accordance with|incorporated|hereby|this announcement|this notice|simplified (?:procedures|acquisition)|\bFSC\b|\bPSC\b|product service code|classification code/i;
+  let out = "";
+  for (const s of sentences) {
+    // Sentences with the government's email or phone are about contacting them, not the work.
+    if (boiler.test(s) || s.length < 25 || /@|\b\d{3}[\s.-]\d{3}[\s.-]\d{4}\b/.test(s)) continue;
+    if (out.length + s.length > max) break;
+    out += (out ? " " : "") + s.trim();
+  }
+  return scrub(out);
+}
+
+function scrub(s: string): string {
+  return s.replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "[contact removed]").replace(/\(?\b\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g, "[contact removed]");
 }
 
 function docDetails(deal: Deal) {
@@ -80,7 +103,11 @@ export function sowTemplate(deal: Deal, profile: CompanyProfile, now: Date = new
   const o = deal.opportunity;
   const b = deal.breakdown ?? rulesBreakdown(o, now);
   const lines = deal.pricing.lines
-    .map((l) => `- ${l.description}: about ${l.quantity.toLocaleString()} ${l.unit}${l.quantity === 1 ? "" : "s"} ${deal.pricing.periodLabel === "year" ? "per year" : "total"}`)
+    .map((l) =>
+      l.quantity === 1 && /^(job|lump sum|ls|each)$/i.test(l.unit)
+        ? `- ${l.description}`
+        : `- ${l.description}: about ${l.quantity.toLocaleString()} ${l.unit}${l.quantity === 1 ? "" : "s"} ${deal.pricing.periodLabel === "year" ? "per year" : "total"}`,
+    )
     .join("\n");
   return `# Scope of Work: ${o.title}
 
@@ -99,7 +126,7 @@ ${b.contractLength}
 ## Work to be performed
 ${lines || "- [Describe each task]"}
 
-${docsSection(deal)}${o.description ? `### Details from the customer\n${o.description.slice(0, 2500)}\n` : ""}
+${docsSection(deal)}${customerDetails(o.description) ? `### Details from the customer\n${customerDetails(o.description)}\n` : ""}
 ## Requirements
 ${[...new Set([...(b.keyRequirements.length ? b.keyRequirements : ["Licenses and insurance required for this work"]), ...docRequirements(deal)])].map((r) => `- ${r}`).join("\n")}
 

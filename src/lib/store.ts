@@ -81,7 +81,11 @@ export async function deleteDeal(userId: string, id: string): Promise<void> {
 // ---- Company profile ----
 
 export async function getProfile(userId: string): Promise<CompanyProfile> {
-  return { ...EMPTY_PROFILE, ...getRecord<CompanyProfile>(userId, "profile", "me") };
+  const saved = getRecord<CompanyProfile>(userId, "profile", "me");
+  if (saved) return { ...EMPTY_PROFILE, ...saved };
+  // A new account starts with the name and email they signed up with.
+  const user = userInfo(userId);
+  return { ...EMPTY_PROFILE, contactName: user?.name ?? "", email: user?.email ?? "" };
 }
 
 export async function saveProfile(userId: string, profile: CompanyProfile): Promise<CompanyProfile> {

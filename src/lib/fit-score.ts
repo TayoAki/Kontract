@@ -80,12 +80,19 @@ function documentFlags(details: BidDetails | undefined, now: Date): FitCriterion
   return out;
 }
 
+/** Building, repair and alteration work (PSC Y/Z, NAICS 23): a licensed contractor does it, and bigger jobs need bonding. */
+export function isConstruction(o: Pick<Opportunity, "pscCode" | "naicsCode" | "serviceKind">): boolean {
+  return /^[YZ]/i.test(o.pscCode ?? "") || /^23/.test(o.naicsCode ?? "") || o.serviceKind === "construction";
+}
+
 export function fitScore(o: Opportunity, now: Date = new Date(), details?: BidDetails): FitScore {
   const criteria: FitCriterion[] = [];
 
   const service = serviceOf(o);
   criteria.push(
-    service === true
+    service === true && isConstruction(o)
+      ? { key: "service", label: "Construction or repair", level: "ok", detail: "Doable with a licensed contractor as your sub. Larger jobs need bonding and someone on site.", points: 20, max: 30 }
+      : service === true
       ? { key: "service", label: "Service, not a product", level: "good", detail: "A local provider can do the work and wait for net-30 payment.", points: 30, max: 30 }
       : service === false
         ? { key: "service", label: "This is a product buy", level: "bad", detail: "Products mean manufacturers, shipping, approved countries and certifications.", points: 0, max: 30 }

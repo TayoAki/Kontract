@@ -65,3 +65,11 @@ test("what the documents say changes the size check and flags bonds and the site
   assert.equal(fit.criteria.reduce((n, c) => n + c.max, 0), 100, "flags don't change the scale");
   assert.notEqual(fit.verdict, "Strong fit", "a $1M+ job isn't a strong first bid");
 });
+
+test("construction scores below a plain service job", () => {
+  const svc = { ...byId["DEMO-0003"]!, pscCode: "S208", naicsCode: "561730" };
+  const roof = { ...svc, pscCode: "Z1DZ", naicsCode: "236220" };
+  const a = fitScore(svc, now), b = fitScore(roof, now);
+  assert.equal(b.criteria[0]!.label, "Construction or repair");
+  assert.equal(a.score - b.score, 10);
+});

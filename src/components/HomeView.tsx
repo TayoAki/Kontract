@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowRight, Search } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowRight, Check, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { bidTotals } from "@/lib/bid-math";
 import { STAGES } from "@/lib/deal";
 import { daysUntil, formatDate, money, pct } from "@/lib/format";
@@ -26,6 +26,73 @@ function DealCard({ deal }: { deal: Deal }) {
         {deal.subs.length > 0 && <Badge>{deal.subs.length} subs</Badge>}
       </div>
     </button>
+  );
+}
+
+const START_DISMISSED = "kontract:start-dismissed";
+
+/** The four steps to a first bid, for new accounts. Hidden once done or dismissed. */
+function StartHere({ deals }: { deals: Deal[] }) {
+  const profile = useApp((s) => s.profile);
+  const setView = useApp((s) => s.setView);
+  const open = useApp((s) => s.open);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(START_DISMISSED) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const withSubs = deals.find((d) => d.subs.length > 0) ?? deals[0];
+  const steps = [
+    { done: Boolean(profile?.companyName && profile.uei), title: "Add your company details", detail: "Name, UEI and CAGE from SAM.gov. They fill in every scope and proposal.", action: "Open settings", go: () => setView("settings") },
+    { done: deals.length > 0, title: "Pick a bid you understand", detail: "Start with services you know (cleaning, grounds, pest control) in your state, with 2+ weeks to respond.", action: "Find opportunities", go: () => setView("search") },
+    { done: deals.some((d) => d.subs.some((s) => s.quote || s.quoteTotal)), title: "Get a quote from a local sub", detail: "Fill in the scope of work, shortlist 3 companies, and send each a quote link.", action: withSubs ? "Open the bid" : "Find a bid first", go: () => (withSubs ? open(withSubs.id, "subs") : setView("search")) },
+    { done: deals.some((d) => d.submittedAt), title: "Price it and send the proposal", detail: "Your price on top of the sub's, then the proposal from the Proposal tab.", action: "My bids", go: () => setView("bids") },
+  ];
+  const next = steps.findIndex((s) => !s.done);
+  if (dismissed || next === -1) return null;
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold text-ink">Start here: your first bid</h2>
+          <p className="text-xs text-ink-2">Four steps. Most people finish the first three in an afternoon.</p>
+        </div>
+        <button
+          type="button"
+          className="text-xs text-ink-3 hover:text-ink"
+          onClick={() => {
+            setDismissed(true);
+            try {
+              localStorage.setItem(START_DISMISSED, "1");
+            } catch {
+              // Private mode: it just comes back next time.
+            }
+          }}
+        >
+          Hide
+        </button>
+      </div>
+      <ol className="mt-3 grid gap-2 sm:grid-cols-4">
+        {steps.map((st, i) => (
+          <li key={st.title} className={cx("flex flex-col rounded-lg border p-3", i === next ? "border-accent bg-accent-soft/40" : "border-line")}>
+            <div className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+              <span className={cx("grid size-5 shrink-0 place-items-center rounded-full text-[11px]", st.done ? "bg-good text-white" : i === next ? "bg-accent text-on-accent" : "bg-panel-2 text-ink-3")}>
+                {st.done ? <Check className="size-3" /> : i + 1}
+              </span>
+              {st.title}
+            </div>
+            <p className="mt-1 flex-1 text-xs leading-snug text-ink-2">{st.detail}</p>
+            {i === next && (
+              <Button size="sm" variant="primary" className="mt-2 self-start" onClick={st.go}>
+                {st.action} <ArrowRight className="size-3.5" />
+              </Button>
+            )}
+          </li>
+        ))}
+      </ol>
+    </Card>
   );
 }
 
@@ -54,6 +121,8 @@ export function HomeView() {
             {formatDate(now.toISOString(), { weekday: "long", month: "long", day: "numeric" })}. A few focused hours a day keeps the pipeline full.
           </p>
         </header>
+
+        <StartHere deals={deals} />
 
         <div className="grid gap-2 sm:grid-cols-5">
           {WEEK.map((d) => {

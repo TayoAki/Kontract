@@ -61,8 +61,10 @@ export function searchOpportunities(
   if (s.sort === "deadline") matches.sort(byDeadline);
   else if (s.sort === "newest") matches.sort(byNewest);
   else {
+    // With a keyword, notices that say it in the title come first ("janitorial" → janitorial contracts, not a notice that mentions it once).
+    const inTitle = (o: Opportunity) => (words.length && words.every((re) => re.test(o.title)) ? 1 : 0);
     const score = new Map(matches.map((o) => [o.id, fitScore(o, now).score]));
-    matches.sort((a, b) => score.get(b.id)! - score.get(a.id)! || byNewest(a, b));
+    matches.sort((a, b) => inTitle(b) - inTitle(a) || score.get(b.id)! - score.get(a.id)! || byNewest(a, b));
   }
 
   const offset = Math.max(0, opts.offset ?? 0);

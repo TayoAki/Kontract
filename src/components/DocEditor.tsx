@@ -10,8 +10,8 @@ import { Bold, Heading2, Heading3, Italic, List, ListOrdered, Minus, Redo2, Tabl
 import { useEffect, useRef } from "react";
 import { cx } from "./ui";
 
-// The proposal editor. The proposal is stored as Markdown (what Claude and
-// the templates write, and what downloads as .md), edited as a document.
+// The document editor for proposals and scopes of work. Both are stored as
+// Markdown (what Claude and the templates write), edited as a document.
 // [Bracketed] blanks are highlighted so none get sent.
 
 const BLANK = /\[([^[\]\n]{2,120})\](?!\()/g;
@@ -126,8 +126,8 @@ function Toolbar({ editor }: { editor: Editor }) {
   );
 }
 
-/** Edit a Markdown document in place. `onReady` hands back the editor (for Word export and printing). */
-export function ProposalEditor({ markdown, onChange, onReady }: { markdown: string; onChange: (md: string) => void; onReady?: (editor: Editor | null) => void }) {
+/** Edit a Markdown document in place. `onReady` hands back the editor (for Word export, printing and copying). */
+export function DocEditor({ markdown, onChange, onReady, label }: { markdown: string; onChange: (md: string) => void; onReady?: (editor: Editor | null) => void; label: string }) {
   const last = useRef(markdown);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editor = useEditor({
@@ -135,7 +135,7 @@ export function ProposalEditor({ markdown, onChange, onReady }: { markdown: stri
     content: markdown,
     contentType: "markdown",
     immediatelyRender: false,
-    editorProps: { attributes: { class: "proposal-doc focus:outline-none", "aria-label": "Proposal", role: "textbox", "aria-multiline": "true" } },
+    editorProps: { attributes: { class: "proposal-doc focus:outline-none", "aria-label": label, role: "textbox", "aria-multiline": "true" } },
     onUpdate: ({ editor: e }) => {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {

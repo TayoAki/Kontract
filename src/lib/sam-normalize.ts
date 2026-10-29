@@ -1,4 +1,5 @@
 import type { Contact, Opportunity, Place } from "./types.ts";
+import { workPlaceFromText } from "./place-from-text.ts";
 
 // Pure helpers that turn rows of SAM.gov's daily Contract Opportunities
 // extract (ContractOpportunitiesFullCSV.csv) into our Opportunity shape.
@@ -98,6 +99,9 @@ export function normalizeBulkRow(row: BulkRow): Opportunity | null {
     ? { city: opt(row.PopCity) && prettyName(row.PopCity!), state: popState, zip: opt(row.PopZip), country: opt(row.PopCountry) }
     : { city: opt(row.City) && prettyName(row.City!), state: opt(row.State), zip: opt(row.ZipCode), country: opt(row.CountryCode) };
   const rawDescription = (row.Description ?? "").replace(/\r\n?/g, "\n").trim();
+  const description = /<\w+[^>]*>/.test(rawDescription) ? htmlToText(rawDescription) : rawDescription;
+  // No place of performance: look for the site in the text before falling back to the office.
+  const fromText = popState ? null : workPlaceFromText(description);
   const setAside = opt(row.SetASide);
   const setAsideCode = parseSetAsideCode(row.SetASideCode ?? "");
   return {
@@ -114,11 +118,12 @@ export function normalizeBulkRow(row: BulkRow): Opportunity | null {
     setAsideCode,
     naicsCode: opt(row.NaicsCode) ?? null,
     pscCode: opt(row.ClassificationCode) ?? null,
-    placeOfPerformance: place,
-    placeFromOffice: popState ? undefined : true,
+    placeOfPerformance: fromText ?? place,
+    placeFromOffice: popState || fromText ? undefined : true,
+    placeFromNotice: fromText ? true : undefined,
     contacts: [contact(row, "Primary"), contact(row, "Secondary")].filter((c): c is Contact => c !== null),
     attachments: null,
-    description: /<\w+[^>]*>/.test(rawDescription) ? htmlToText(rawDescription) : rawDescription,
+    description,
     samUrl: `https://sam.gov/opp/${id}/view`,
     source: "bulk",
   };

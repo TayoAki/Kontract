@@ -37,6 +37,8 @@ export interface Opportunity {
   samUrl: string;
   /** True when SAM.gov gave no place of performance and this is the contracting office's location. */
   placeFromOffice?: boolean;
+  /** True when the place came from the notice's text (the fields were blank). */
+  placeFromNotice?: boolean;
   /** How many versions (original + amendments) SAM.gov has posted under this solicitation number. */
   versions?: number;
   source?: "bulk" | "sample" | "sled";

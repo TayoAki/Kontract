@@ -92,3 +92,9 @@ test("isResidential", () => {
   assert.equal(isResidential(""), null);
   assert.equal(isResidential("Electrical"), null);
 });
+
+test("window washing isn't window installation", async () => {
+  const { workForJob } = await import("./permit-trades.ts");
+  assert.deepEqual(workForJob({ title: "36C24127Q0017 Windows Washing Service", naicsCode: "561720" }), []);
+  assert.deepEqual(workForJob({ title: "Replace Windows at Building 12" }).slice(0, 1), ["windows"]);
+});
