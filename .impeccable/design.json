@@ -1,0 +1,533 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T02:59:56+00:00",
+  "title": "Design System: Kontract",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Ledger Green",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Deep Ledger Green",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Mint Wash",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "On Green",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#9aa39d",
+          "#d4d9d2",
+          "#eff1ed",
+          "#f6f7f4",
+          "#ffffff"
+        ]
+      },
+      "selection": {
+        "role": "primary",
+        "displayName": "Selection Mint",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "good": {
+        "role": "secondary",
+        "displayName": "Good",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "good-soft": {
+        "role": "secondary",
+        "displayName": "Good Wash",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Deadline Amber",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "warn-soft": {
+        "role": "tertiary",
+        "displayName": "Amber Wash",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "bad": {
+        "role": "tertiary",
+        "displayName": "Alarm Red",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "bad-soft": {
+        "role": "tertiary",
+        "displayName": "Red Wash",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "page": {
+        "role": "neutral",
+        "displayName": "Field Off-White",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#ffffff"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Pale Sage",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Green-Black Ink",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Slate Ink",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "tonalRamp": [
+          "#101814",
+          "#26302b",
+          "#4a544e",
+          "#636d67",
+          "#9aa39d",
+          "#d4d9d2",
+          "#e2e6e0",
+          "#f6f7f4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "One page heading per view and the bid title; 20px on phones."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Detail titles: permit type, lead address."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings with a 13px ink-2 subtitle."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Working text: list rows, notes, descriptions."
+      },
+      "body-control": {
+        "displayName": "Body Control",
+        "purpose": "Button and field text; 16px on touch screens."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, stat labels, small buttons, chips."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Rail and tab captions, badges, the status line."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Stat values; tabular numerals for money and counts."
+      },
+      "document": {
+        "displayName": "Document",
+        "purpose": "The proposal editor's document."
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Cards, stats, fields, primary/secondary buttons, inactive chips, switch track."
+      },
+      {
+        "name": "raised-segment",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "Active segment inside a muted track only."
+      },
+      {
+        "name": "floating",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Toast, dialogs, the open list drawer."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid #15803d; outline-offset: 2px",
+        "purpose": "Keyboard focus on every control."
+      },
+      {
+        "name": "field-focus",
+        "value": "border-color: #15803d; box-shadow: 0 0 0 3px rgb(21 128 61 / 0.2)",
+        "purpose": "Focused input, select, textarea."
+      },
+      {
+        "name": "scrim-dialog",
+        "value": "rgb(0 0 0 / 0.4)",
+        "purpose": "Behind modal dialogs (intentionally lighter than shadcn's /50)."
+      },
+      {
+        "name": "scrim-drawer",
+        "value": "rgb(0 0 0 / 0.2)",
+        "purpose": "Behind the list drawer below lg."
+      }
+    ],
+    "motion": [
+      {
+        "name": "enter",
+        "value": "160ms cubic-bezier(0.16, 1, 0.3, 1); from opacity 0, translateY(4px) scale(0.98)",
+        "purpose": "Dialogs and notices; removed under prefers-reduced-motion."
+      },
+      {
+        "name": "state",
+        "value": "color, background-color, border-color, box-shadow at Tailwind's default 150ms",
+        "purpose": "Hover and selection changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Rail and status line appear; bottom tabs hide."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "List column fixed instead of drawer."
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "purpose": "Bid snapshot column appears."
+      },
+      {
+        "name": "touch",
+        "value": "(pointer: coarse)",
+        "purpose": "40-44px controls, 16px field text."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one green action per view.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg>I'm on it</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:6px;font:500 14px/20px Geist,ui-sans-serif,system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:color .15s,background-color .15s,border-color .15s,box-shadow .15s;}.ds-btn:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}.ds-btn-primary{background:var(--accent,#15803d);color:var(--on-accent,#fff);border:0;box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);}.ds-btn-primary:hover{background:var(--accent-ink,#166534);}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default button: white, hairline, shadow-xs.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">SAM.gov</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:6px;font:500 14px/20px Geist,ui-sans-serif,system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:color .15s,background-color .15s,border-color .15s,box-shadow .15s;}.ds-btn:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}.ds-btn-secondary{background:var(--panel,#fff);color:var(--ink,#101814);border:1px solid var(--line,#e2e6e0);box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);}.ds-btn-secondary:hover{background:var(--panel-2,#eff1ed);}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis action with no chrome.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Not for me</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:6px;font:500 14px/20px Geist,ui-sans-serif,system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:color .15s,background-color .15s,border-color .15s,box-shadow .15s;}.ds-btn:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}.ds-btn-ghost{background:transparent;color:var(--ink-2,#4a544e);border:0;}.ds-btn-ghost:hover{background:var(--panel-2,#eff1ed);color:var(--ink,#101814);}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action: secondary chrome, red text.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Remove</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:6px;font:500 14px/20px Geist,ui-sans-serif,system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:color .15s,background-color .15s,border-color .15s,box-shadow .15s;}.ds-btn:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}.ds-btn-danger{background:var(--panel,#fff);color:var(--bad,#b91c1c);border:1px solid var(--line,#e2e6e0);box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);}.ds-btn-danger:hover{background:var(--bad-soft,#fde5e3);}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field with a green border and ring on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">Company name <span class=\"ds-hint\">as on SAM.gov</span></span><input class=\"ds-input\" placeholder=\"Rivera Roofing\"></label>",
+      "css": ".ds-field{display:block;max-width:320px;}.ds-label{display:block;margin-bottom:4px;font:500 12px/16px Geist,ui-sans-serif,sans-serif;color:var(--ink-2,#4a544e);}.ds-hint{margin-left:4px;font-weight:400;color:var(--ink-3,#636d67);}.ds-input{width:100%;height:36px;padding:0 12px;border:1px solid var(--line-strong,#d4d9d2);border-radius:6px;background:var(--panel,#fff);color:var(--ink,#101814);font:400 14px Geist,ui-sans-serif,sans-serif;box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);transition:color .15s,box-shadow .15s;}.ds-input::placeholder{color:var(--ink-3,#636d67);}.ds-input:focus{outline:none;border-color:var(--accent,#15803d);box-shadow:0 0 0 3px rgb(21 128 61 / 0.2);}"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Pill toggle; active takes the mint wash.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip ds-chip-on\" aria-pressed=\"true\">Janitorial</button><button class=\"ds-chip\" aria-pressed=\"false\">Landscaping</button></div>",
+      "css": ".ds-chips{display:flex;gap:6px;}.ds-chip{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:9999px;font:500 12px Geist,ui-sans-serif,sans-serif;border:1px solid var(--line,#e2e6e0);background:var(--panel,#fff);color:var(--ink-2,#4a544e);box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);cursor:pointer;transition:color .15s,background-color .15s;}.ds-chip:hover{background:var(--panel-2,#eff1ed);color:var(--ink,#101814);}.ds-chip-on,.ds-chip-on:hover{border-color:rgb(21 128 61 / 0.4);background:var(--accent-soft,#e6f4ea);color:var(--accent-ink,#166534);box-shadow:none;}.ds-chip:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}"
+    },
+    {
+      "name": "Card with Stat",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White 12px card on the page; stat value tabular.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-stat-label\">Respond by</div><div class=\"ds-stat-value\">Nov 12, 2026</div><span class=\"ds-badge ds-badge-good\">15d left</span></div>",
+      "css": ".ds-card{max-width:220px;padding:12px 14px;border:1px solid var(--line,#e2e6e0);border-radius:12px;background:var(--panel,#fff);box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);font-family:Geist,ui-sans-serif,sans-serif;}.ds-stat-label{font-size:12px;color:var(--ink-2,#4a544e);}.ds-stat-value{margin:4px 0 8px;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink,#101814);}.ds-badge{display:inline-flex;padding:2px 6px;border-radius:6px;border:1px solid transparent;font-size:11px;line-height:16px;font-weight:500;}.ds-badge-good{background:var(--good-soft,#e6f4ea);color:var(--good,#166534);}"
+    },
+    {
+      "name": "Tab Track",
+      "kind": "nav",
+      "refersTo": "tab-track",
+      "description": "Muted track; the active segment is a white tab.",
+      "html": "<div class=\"ds-track\" role=\"tablist\"><button class=\"ds-tab ds-tab-on\" role=\"tab\" aria-selected=\"true\">Overview</button><button class=\"ds-tab\" role=\"tab\">Past pricing</button><button class=\"ds-tab\" role=\"tab\">Subcontractors <span class=\"ds-count\">3</span></button><button class=\"ds-tab\" role=\"tab\">Proposal</button></div>",
+      "css": ".ds-track{display:flex;height:36px;padding:3px;border-radius:8px;background:var(--panel-2,#eff1ed);}.ds-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:var(--ink-2,#4a544e);font:500 13px Geist,ui-sans-serif,sans-serif;cursor:pointer;transition:color .15s,box-shadow .15s;}.ds-tab:hover{color:var(--ink,#101814);}.ds-tab-on{background:var(--panel,#fff);color:var(--ink,#101814);box-shadow:0 1px 3px 0 rgb(0 0 0 / 0.1),0 1px 2px -1px rgb(0 0 0 / 0.1);}.ds-tab:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}.ds-count{display:inline-flex;height:16px;align-items:center;padding:0 4px;border-radius:4px;background:var(--accent-soft,#e6f4ea);color:var(--accent-ink,#166534);font-size:11px;}"
+    },
+    {
+      "name": "Icon Rail",
+      "kind": "nav",
+      "refersTo": "nav-rail-item-active",
+      "description": "Desktop rail; active item tinted green, red due count.",
+      "html": "<nav class=\"ds-rail\"><div class=\"ds-mark\">K</div><button class=\"ds-rail-item\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/></svg><span>Home</span></button><button class=\"ds-rail-item ds-rail-on\" aria-current=\"page\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><span>Find</span></button><button class=\"ds-rail-item\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/></svg><span>Due</span><i class=\"ds-due\">2</i></button></nav>",
+      "css": ".ds-rail{display:inline-flex;flex-direction:column;align-items:center;gap:2px;width:64px;padding:12px 0;background:var(--panel,#fff);border-right:1px solid var(--line,#e2e6e0);font-family:Geist,ui-sans-serif,sans-serif;}.ds-mark{display:grid;place-items:center;width:32px;height:32px;margin-bottom:12px;border-radius:6px;background:var(--accent,#15803d);color:#fff;font-weight:700;font-size:14px;}.ds-rail-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:56px;height:48px;border:0;border-radius:6px;background:transparent;color:var(--ink-2,#4a544e);cursor:pointer;transition:color .15s,background-color .15s;}.ds-rail-item span{font-size:11px;line-height:1;font-weight:500;}.ds-rail-item:hover{background:var(--panel-2,#eff1ed);color:var(--ink,#101814);}.ds-rail-on,.ds-rail-on:hover{background:var(--accent-soft,#e6f4ea);color:var(--accent-ink,#166534);font-weight:600;}.ds-rail-item:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}.ds-due{position:absolute;top:2px;right:6px;min-width:16px;padding:0 4px;border-radius:9999px;background:var(--bad,#b91c1c);color:#fff;font:600 11px/16px Geist,sans-serif;font-style:normal;}"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "Bottom-centre notice, the one floating shadow-lg surface.",
+      "html": "<div class=\"ds-toast\" role=\"status\"><span>Quote link copied</span><button class=\"ds-toast-act\">Undo</button></div>",
+      "css": "@keyframes ds-enter{from{opacity:0;transform:translateY(4px) scale(.98);}}.ds-toast{display:inline-flex;align-items:center;gap:12px;padding:10px 16px;border:1px solid var(--line,#e2e6e0);border-radius:8px;background:var(--panel,#fff);color:var(--ink,#101814);font:500 14px Geist,ui-sans-serif,sans-serif;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1),0 4px 6px -4px rgb(0 0 0 / 0.1);animation:ds-enter 160ms cubic-bezier(0.16,1,0.3,1);}.ds-toast-act{border:0;background:transparent;color:var(--accent,#15803d);font:inherit;cursor:pointer;}.ds-toast-act:hover{text-decoration:underline;}.ds-toast-act:focus-visible{ outline: 2px solid var(--accent, #15803d); outline-offset: 2px;}@media (prefers-reduced-motion:reduce){.ds-toast{animation:none;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Bid Desk",
+    "overview": "Kontract plays the category standard straight: the shadcn/ui way of building an app, in Kontract's own off-white and green. White, flat cards with 1px borders sit on an off-white page. Shadows are barely there. The data and the next action carry each screen. The owner chose this look in plain words (\"make it feel like shadcn\"). Neumorphism was tried and the owner rejected it, and the build has no glass and no decorative gradients. The app is light only, by choice.\n\nScreens are dense the way a working desk is dense. On desktop a prime sees a 64px icon rail, a 300px list column, the bid with its muted tab track, and a 320px bid snapshot column, all at once. Type is small and steady: 13px body, 15px section titles, and one 24px page heading. On phones the same places move into bottom tabs, the list becomes a drawer, and every control grows to finger size.\n\nColour is a grammar, not decoration. Green marks what you can do, what is selected, links, and money. Amber and red appear only for deadlines, warnings and errors. Anything selected gets a soft green tint, and the next step is the one green button.",
+    "keyCharacteristics": [
+      "Off-white page, white bordered cards, faint shadow-xs; a large shadow only on things that float.",
+      "One green; amber and red reserved for time pressure and failure.",
+      "Geist throughout; tabular figures for every number that is money or a count.",
+      "6px radius on controls, 12px on cards, full rounding on chips, avatars and switches.",
+      "Muted tab tracks where the active segment is a white tab.",
+      "Light only."
+    ],
+    "rules": [
+      {
+        "name": "The One Green Rule",
+        "body": "Each view has exactly one green primary action. Everything else is secondary (white and bordered) or ghost.",
+        "section": "colors"
+      },
+      {
+        "name": "The Green Means Go Rule",
+        "body": "Green is only for primary actions, selected states, links and money. Amber and red are only for deadlines, warnings and errors. Never use them for decoration or for categories.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tint Carries Ink Rule",
+        "body": "Text on any soft tint uses that tint's ink: accent-ink on accent-soft, warn on warn-soft, bad on bad-soft. Never put the bright accent on its own tint.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Headings and labels are sentence case, in plain words. There are no uppercase tracked labels and no eyebrows above headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Money Rule",
+        "body": "Any figure a prime compares (price, cost, profit, counts) is set with tabular numerals so columns line up.",
+        "section": "typography"
+      },
+      {
+        "name": "The Float-Only-When-Floating Rule",
+        "body": "shadow-lg is only for surfaces that sit above the layout. Nothing in the flow gets more than shadow-xs, except the active segment of a track.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do put one green primary button in each view; make every other action secondary or ghost.",
+      "Do show selection with the mint wash and accent-ink text: rail item, list row, chip, tab badge.",
+      "Do use the 2px solid green focus outline, offset 2px, on every interactive element; fields use the green border with a 3px ring at 20%.",
+      "Do use white 12px-radius cards with a 1px hairline and shadow-xs on the off-white page.",
+      "Do set money and counts in tabular numerals.",
+      "Do give touch screens 40 to 44px controls and 16px field text.",
+      "Do keep the toast bottom-centre, clear of the bottom tabs and status line.",
+      "Do use black/40 behind dialogs and black/20 behind the list drawer."
+    ],
+    "donts": [
+      "Don't add a dark theme; Kontract is light only by choice.",
+      "Don't use neumorphic soft 3D, glass or decorative gradients; the owner rejected them.",
+      "Don't use amber or red for anything except deadlines, warnings and errors.",
+      "Don't use shadow-lg on anything that sits in the page flow.",
+      "Don't add uppercase eyebrows or kickers above headings; write sentence-case headings in plain words.",
+      "Don't put the bright accent as text on a green tint; use accent-ink.",
+      "Don't add a second typeface; Geist does every role."
+    ]
+  }
+}

@@ -78,7 +78,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   });
   const c = () => editor.chain().focus();
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-line bg-panel/95 px-2 py-1 backdrop-blur">
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-line bg-panel px-2 py-1">
       <Tool label="Bold" active={s.bold} on={() => c().toggleBold().run()}>
         <Bold className="size-4" />
       </Tool>
