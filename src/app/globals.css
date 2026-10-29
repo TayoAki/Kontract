@@ -128,4 +128,4 @@ input[type="number"] {
 .proposal-doc th { background: var(--panel-2); font-weight: 600; }
 .proposal-doc td p, .proposal-doc th p { margin: 0; }
 .proposal-doc .selectedCell { background: var(--accent-soft); }
-.proposal-doc .blank { background: var(--warn-soft); color: var(--warn); border-radius: 3px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 35%, transparent); }
+.proposal-doc .blank { background: var(--warn-soft); color: var(--warn); border-radius: 4px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 35%, transparent); }

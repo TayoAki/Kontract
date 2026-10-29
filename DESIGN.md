@@ -21,6 +21,8 @@ colors:
   warn-soft: "#fdf1d8"
   bad: "#b91c1c"
   bad-soft: "#fde5e3"
+  print-ink: "#111"
+  print-rule: "#ddd"
 typography:
   display:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
@@ -68,6 +70,11 @@ typography:
     fontSize: "13.5px"
     fontWeight: 400
     lineHeight: 1.65
+  print-heading:
+    fontFamily: "ui-sans-serif, system-ui, sans-serif"
+    fontSize: "16px"
+    fontWeight: 600
+    lineHeight: 1.4
 rounded:
   sm: "4px"
   md: "6px"
@@ -340,6 +347,10 @@ A native dialog, max-w-2xl and up to 85dvh tall: a white panel with a hairline, 
 
 ### Notes and Empty States
 Notes are 8px tinted blocks in 12.5px text: accent by default, warn when something needs attention. Error notes are red-tinted, with an XCircle icon and role="alert". Empty states are a dashed, 12px-round box with a 32px ink-3 icon, a 14px medium title, 13px ink-2 copy and an optional action.
+
+### Paper Output
+
+Print-to-PDF and the printed lead letter are paper, not screen: neutral print ink (#111) and #ddd rules on white, system fonts, a 16px section heading. They leave the screen palette on purpose so the page prints clean and grey-scale safe. The Word export follows the same neutral rule.
 
 ### Motion
 The enter animation is 160ms from 4px down at 98% scale, eased cubic-bezier(0.16, 1, 0.3, 1). It applies only to dialogs and notices and is removed under prefers-reduced-motion. Everything else uses colour and box-shadow transitions only.
