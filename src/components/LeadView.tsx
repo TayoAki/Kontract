@@ -51,7 +51,7 @@ export function LeadView({ s, sender, className }: { s: LeadSnapshot; sender?: S
         </div>
         <h1 className="mt-2 text-xl font-semibold text-ink">{s.address}</h1>
         <a href={s.mapUrl} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-accent">
-          <MapPin className="size-3.5" /> {[s.city, s.state].filter(Boolean).join(", ")} {s.zip} · Map
+          <MapPin className="size-3.5" /> {[s.city, s.state].filter(Boolean).join(", ")} {s.zip} · <span className="font-medium text-accent-ink underline-offset-2 hover:underline">Map</span>
         </a>
         <p className="mt-2 text-[15px] text-ink">{s.reason}</p>
         {s.description && <p className="mt-1 text-[13px] text-ink-2">{s.description}</p>}
