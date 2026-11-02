@@ -235,6 +235,13 @@ export async function searchSamOpportunities(
   return { ...r, source: "bulk", dataAsOf: idx.meta.asOf ?? idx.meta.fetchedAt };
 }
 
+/** One notice from the local index, with its description, or undefined if it isn't there. */
+export async function samOpportunity(id: string): Promise<Opportunity | undefined> {
+  const idx = await getIndex({ wait: true });
+  const o = idx?.byId.get(id);
+  return o && { ...o, description: idx!.descriptions.get(id) ?? "" };
+}
+
 /** Full description for a notice in the local index ("" if it has none, undefined if unknown). */
 export async function samDescription(id: string): Promise<string | undefined> {
   const idx = await getIndex({ wait: false });

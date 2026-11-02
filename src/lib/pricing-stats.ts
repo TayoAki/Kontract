@@ -1,4 +1,17 @@
-import type { PastAward, PricingStats } from "./types.ts";
+import { isServiceCode } from "./fit-score.ts";
+import { awardKeywords } from "./rules.ts";
+import type { Opportunity, PastAward, PricingQuery, PricingStats } from "./types.ts";
+
+/** The USAspending search a notice starts with: its keywords, NAICS code and state, services only, six years back. */
+export function pricingQueryFor(o: Opportunity): PricingQuery {
+  return {
+    keywords: awardKeywords(o),
+    naics: o.naicsCode ?? undefined,
+    state: o.placeOfPerformance.state,
+    servicesOnly: isServiceCode(o.pscCode) !== false,
+    yearsBack: 6,
+  };
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

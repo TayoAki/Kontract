@@ -1,9 +1,13 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { mcp } from "@better-auth/mcp";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { nextCookies } from "better-auth/next-js";
+import { jwt } from "better-auth/plugins";
 import { DATA_DIR, dataPath } from "./data-dir";
 import { getDb } from "./db";
 import { importLegacyData } from "./store";
@@ -11,6 +15,34 @@ import { importLegacyData } from "./store";
 // Accounts: email + password via Better Auth, stored in the same SQLite file
 // as each user's records. Sessions are cookies; every app API route calls
 // requireUser() and scopes its queries to that user's id.
+//
+// The same accounts sign in AI assistants to the MCP server (/api/mcp): Better
+// Auth acts as the OAuth 2.1 server, Claude registers itself (DCR) or presents
+// its published identity (CIMD), the user signs in and approves on
+// /oauth/consent, and the token is bound to the MCP URL.
+
+/** The MCP server's public URL, when the site knows its own address (BETTER_AUTH_URL). */
+export function mcpResource(): string | null {
+  const base = process.env.BETTER_AUTH_URL?.replace(/\/+$/, "");
+  return base ? `${base}/api/mcp` : null;
+}
+
+function mcpPlugins() {
+  const resource = mcpResource();
+  if (!resource) return [];
+  return [
+    jwt(),
+    mcp({
+      resource,
+      loginPage: "/",
+      consentPage: "/oauth/consent",
+      // MCP clients register themselves; Claude's connectors use this or CIMD below.
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+    }),
+    cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
+  ];
+}
 
 /** BETTER_AUTH_SECRET, or a random one generated once and kept in the data directory. */
 function authSecret(): string {
@@ -46,7 +78,7 @@ function authOptions() {
         },
       },
     },
-    plugins: [nextCookies()],
+    plugins: [...mcpPlugins(), nextCookies()],
     // Behind a proxy, rate limits need the header it puts the client's IP in
     // (x-real-ip on Railway). Only set it where the proxy overwrites that header.
     advanced: process.env.TRUSTED_IP_HEADER ? { ipAddress: { ipAddressHeaders: [process.env.TRUSTED_IP_HEADER.toLowerCase()] } } : undefined,

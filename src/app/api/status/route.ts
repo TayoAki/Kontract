@@ -1,3 +1,4 @@
+import { mcpResource } from "@/lib/auth";
 import { hasClaude, MODEL } from "@/lib/claude";
 import { json, withUser } from "@/lib/http";
 import { placesProvider } from "@/lib/places";
@@ -20,6 +21,7 @@ export const GET = withUser(async () => {
     model: MODEL,
     subPlans: planConfig(),
     sled: sledStatus(),
+    mcpUrl: mcpResource(),
   };
   return json(status);
 });

@@ -3,22 +3,14 @@
 import { ExternalLink, Plus, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { applyMarkup, bidTotals, vsAnchor } from "@/lib/bid-math";
-import { isServiceCode } from "@/lib/fit-score";
 import { formatDate, money, pct, uid } from "@/lib/format";
-import { awardKeywords } from "@/lib/rules";
+import { pricingQueryFor } from "@/lib/pricing-stats";
 import type { Deal, PastAward, PriceLine, PricingModel, PricingResults } from "@/lib/types";
 import { useApp } from "../state";
 import { Badge, Button, Card, Chip, cx, Empty, ErrorNote, Input, Label, Note, NumberInput, Section, Select, Stat } from "../ui";
 
 export function defaultPricingQuery(deal: Deal) {
-  const o = deal.opportunity;
-  return {
-    keywords: awardKeywords(o),
-    naics: o.naicsCode ?? undefined,
-    state: o.placeOfPerformance.state,
-    servicesOnly: isServiceCode(o.pscCode) !== false,
-    yearsBack: 6,
-  };
+  return pricingQueryFor(deal.opportunity);
 }
 
 /** Loads past awards for a deal and keeps them in the store, keyed by deal. */

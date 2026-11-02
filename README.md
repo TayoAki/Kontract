@@ -118,6 +118,19 @@ Guard rails: every prospect needs a source link; **emails are kept only if they 
 
 A register of every feed: city and county permit feeds grouped by state, and the state and local bid feeds. Each shows its dataset link, how often it publishes, its known gaps (no contractor names, dates as text, weekly batches…), when it was last verified, and its **health** from the last pulls: OK, stale (no new rows when the feed should have them), empty, failing (with the error) or unknown. **Check all now** re-pulls every feed.
 
+### Use it from Claude (MCP)
+
+Kontract is also an MCP server, so Claude (on the web, desktop or in Claude Code) can work bids on your account. **Settings → Use Kontract from Claude** shows the URL (`https://<your-domain>/api/mcp`) and the steps: in Claude, Customize → Connectors → Add custom connector and paste it; in Claude Code, `claude mcp add --transport http kontract <url>` then `/mcp`. Claude sends you to Kontract to sign in and shows what it's asking for on an Allow / Deny page.
+
+Its 18 tools use the same code as the screens:
+
+- **Reads** (no approval prompt): `search_opportunities`, `get_opportunity`, `read_bid_documents`, `get_past_pricing`, `find_local_businesses`, `find_permit_contractors`, `search_permits`, `list_my_bids`, `whats_due`, `list_bench`, `get_document` (a saved scope, proposal or outreach script, or a fill-in draft).
+- **Changes** (Claude asks first): `track_bid`, `set_bid_stage`, `add_to_shortlist`, `add_to_bench`, `log_bench_activity`, `create_quote_link`, `save_document` (overwriting needs `replace_existing`).
+
+Nothing it does sends an email or text: quote links come back for you to share. Claude writes scopes and proposals itself from the data, so drafting through it spends none of this site's Claude credit. Bid-document reads and past-pricing lookups are limited to 30 an hour per user, and business searches to 20 a day.
+
+How it works: Better Auth is the OAuth 2.1 server (`@better-auth/mcp`). Claude either presents its published client identity (CIMD) or registers itself (DCR); a client that only redirects to `localhost` is registered as a native app. Tokens are JWTs bound to the `/api/mcp` URL. The server (`@modelcontextprotocol/server`) is stateless and answers both the 2026-07-28 and 2025-11-25 protocols. It's on only when `BETTER_AUTH_URL` is set.
+
 ## How it's built
 
 Next.js (App Router) + TypeScript + Tailwind. One app serves the UI and a small JSON API.
@@ -164,9 +177,11 @@ src/components/      The UI
 | `POST /api/sub/checkout`, `POST /api/sub/portal` | Stripe Checkout for the daily plan, and the billing portal |
 | `POST /api/stripe/webhook` | Stripe events that switch a sub's plan (signature checked) |
 | `GET/PUT /api/prospects`, `POST /api/prospects/run` `{website, kinds}` | AI finder results and status changes; a run streams NDJSON progress |
-| `/api/auth/*` | Sign up, sign in, sign out (Better Auth: `POST /api/auth/sign-up/email`, `/sign-in/email`, `/sign-out`) |
+| `/api/auth/*` | Sign up, sign in, sign out (Better Auth: `POST /api/auth/sign-up/email`, `/sign-in/email`, `/sign-out`), and the OAuth server for AI assistants (`/api/auth/oauth2/*`, `/api/auth/jwks`) |
+| `POST /api/mcp` | The MCP server (Streamable HTTP). Needs an OAuth access token issued for this URL; without one it answers 401 pointing at the metadata below |
+| `GET /.well-known/oauth-protected-resource/api/mcp`, `/.well-known/oauth-authorization-server/api/auth` | OAuth discovery for MCP clients |
 
-Every endpoint except `/api/auth/*` needs a signed-in session cookie and only sees that account's data. From a terminal:
+Every endpoint except `/api/auth/*`, `/api/mcp` and the public link pages needs a signed-in session cookie and only sees that account's data. From a terminal:
 
 ```bash
 curl -s -c .tmp/jar -H 'Origin: http://localhost:3000' -H 'Content-Type: application/json' \
@@ -189,7 +204,7 @@ npm run typecheck
 
 Accounts, bids, profiles and CRM contacts live in one SQLite file, `.data/kontract.db`; the SAM.gov index is `.data/sam-opportunities.jsonl`. Run it somewhere with a persistent disk: a VPS, or Railway/Render with a volume mounted and `DATA_DIR` pointing at it. `npm run build && npm start` runs the production server (it listens on `PORT`). It holds the notice index in memory (about 300–400 MB), and needs to reach sam.gov, usaspending.gov and the cities' open-data portals.
 
-On Railway: one service from this repo, a volume mounted at `/data`, and these variables: `DATA_DIR=/data`, `BETTER_AUTH_URL` (the public `https://…` URL; quote links and invites use it), `TRUSTED_IP_HEADER=x-real-ip` (so sign-in rate limits are per visitor), plus whichever API keys you use. For the paid plan, point a Stripe webhook at `https://<your-domain>/api/stripe/webhook`. `BETTER_AUTH_SECRET` is optional there: without it a secret is generated once into the volume. Anyone with the URL can create an account, so share it with the people you want.
+On Railway: one service from this repo, a volume mounted at `/data`, and these variables: `DATA_DIR=/data`, `BETTER_AUTH_URL` (the public `https://…` URL; quote links, invites and the MCP server use it), `TRUSTED_IP_HEADER=x-real-ip` (so sign-in rate limits are per visitor), plus whichever API keys you use. For the paid plan, point a Stripe webhook at `https://<your-domain>/api/stripe/webhook`. `BETTER_AUTH_SECRET` is optional there: without it a secret is generated once into the volume. Anyone with the URL can create an account, so share it with the people you want.
 
 A bids file from before accounts existed (`.data/kontract.json`) is imported into the first account created, then renamed.
 

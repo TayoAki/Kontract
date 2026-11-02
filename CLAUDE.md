@@ -43,7 +43,8 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/digests.ts`, `digest-email.ts`, `email.ts` | Lead digest emails (Resend), weekly on free and daily on paid |
 | `src/lib/stripe.ts`, `stripe-signature.ts` | Daily-plan Checkout, billing portal, webhook → plan |
 | `src/lib/prospects.ts`, `prospect-rules.ts` | AI customer finder (Claude + web search/fetch): profile, signals, prospects; cleaning (source required, emails only if on a page read), run limits |
-| `src/lib/auth.ts`, `db.ts` | Better Auth accounts (email + password) and the SQLite file `.data/kontract.db` |
+| `src/lib/auth.ts`, `db.ts` | Better Auth accounts (email + password), the OAuth server AI assistants sign in through, and the SQLite file `.data/kontract.db` |
+| `src/lib/mcp-tools.ts`, `mcp-format.ts`, `rate-limit.ts`, `oauth-registration.ts` | The MCP server's 18 tools (`/api/mcp`), the compact shapes they return, per-user limits on outside lookups, and labelling localhost-only OAuth clients as native |
 | `src/lib/store.ts` | Per-user records in SQLite (deals, profile, bench contacts, account, prospects) and `.data/cache.json` (the SAM.gov index is `.data/sam-opportunities.jsonl`) |
 
 ## Operating principles

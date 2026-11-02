@@ -333,6 +333,8 @@ export interface IntegrationStatus {
   subPlans: { freePerWeek: number; dailyPrice: number; payments: boolean; email: boolean };
   /** Open state and local bids we're collecting, and from how many feeds. */
   sled?: { count: number; feeds: number; error: string | null };
+  /** The MCP server's URL for AI assistants, when the site knows its public address. */
+  mcpUrl?: string | null;
 }
 
 export type DraftKind = "sow" | "outreach" | "proposal";

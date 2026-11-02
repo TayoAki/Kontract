@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Download, LogOut } from "lucide-react";
+import { ChevronRight, Copy, Download, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/format";
 import type { CompanyProfile } from "@/lib/types";
@@ -211,6 +211,35 @@ export function SettingsView() {
             })}
           </Card>
         </Section>
+
+        {status?.mcpUrl && (
+          <Section title="Use Kontract from Claude" subtitle="Ask Claude to find bids, check past pricing, line up subs and draft scopes and proposals, working on your account.">
+            <Card className="space-y-4 p-4">
+              <div className="flex gap-2">
+                <Input readOnly value={status.mcpUrl} aria-label="Kontract's MCP server URL" onFocus={(e) => e.currentTarget.select()} className="font-mono text-[13px]" />
+                <Button
+                  onClick={() => {
+                    void navigator.clipboard.writeText(status.mcpUrl!).then(
+                      () => say("Copied the connector URL"),
+                      () => say("Couldn't copy. Select the URL and copy it."),
+                    );
+                  }}
+                >
+                  <Copy className="size-4" /> Copy
+                </Button>
+              </div>
+              <ol className="list-decimal space-y-1.5 pl-5 text-[13px] text-ink-2">
+                <li>
+                  <span className="font-medium text-ink">Claude on the web or desktop:</span> Customize, then Connectors, then Add custom connector. Paste the URL, sign in to Kontract when asked, and click Allow.
+                </li>
+                <li>
+                  <span className="font-medium text-ink">Claude Code:</span> run <code className="rounded bg-panel-2 px-1 py-0.5 font-mono text-xs text-ink">claude mcp add --transport http kontract {status.mcpUrl}</code>, then type <code className="rounded bg-panel-2 px-1 py-0.5 font-mono text-xs text-ink">/mcp</code> to sign in.
+                </li>
+              </ol>
+              <p className="text-xs text-ink-3">Claude asks before it changes anything, and nothing it does sends emails or texts. You can disconnect it from Claude&apos;s connector settings.</p>
+            </Card>
+          </Section>
+        )}
 
         <Section title="Your data" subtitle="Bids, quotes, drafts and CRM contacts are saved on the server, under your account.">
           <Button
