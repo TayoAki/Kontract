@@ -44,6 +44,7 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/stripe.ts`, `stripe-signature.ts` | Daily-plan Checkout, billing portal, webhook → plan |
 | `src/lib/prospects.ts`, `prospect-rules.ts` | AI customer finder (Claude + web search/fetch): profile, signals, prospects; cleaning (source required, emails only if on a page read), run limits |
 | `src/lib/auth.ts`, `db.ts` | Better Auth accounts (email + password), the OAuth server AI assistants sign in through, and the SQLite file `.data/kontract.db` |
+| `src/lib/service-auth.ts`, `service-usage.ts`, `engine.ts`, `v1-shape.ts`, `cost-meter.ts`, `prices.ts`, `api-v1.ts` | The engine API (`/api/v1`) for Magpie: service keys and workspaces, usage rows, shared query parsing and notice lookup, response size rules, per-request cost metering and the price table, and the generated response types (`npm run api-v1-types`) |
 | `src/lib/mcp-tools.ts`, `mcp-format.ts`, `rate-limit.ts`, `oauth-registration.ts` | The MCP server's 18 tools (`/api/mcp`), the compact shapes they return, per-user limits on outside lookups, and labelling localhost-only OAuth clients as native |
 | `src/lib/store.ts` | Per-user records in SQLite (deals, profile, bench contacts, account, prospects) and `.data/cache.json` (the SAM.gov index is `.data/sam-opportunities.jsonl`) |
 

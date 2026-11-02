@@ -131,6 +131,30 @@ Nothing it does sends an email or text: quote links come back for you to share. 
 
 How it works: Better Auth is the OAuth 2.1 server (`@better-auth/mcp`). Claude either presents its published client identity (CIMD) or registers itself (DCR); a client that only redirects to `localhost` is registered as a native app. Tokens are JWTs bound to the `/api/mcp` URL. The server (`@modelcontextprotocol/server`) is stateless and answers both the 2026-07-28 and 2025-11-25 protocols. It's on only when `BETTER_AUTH_URL` is set.
 
+### Engine API (`/api/v1`)
+
+For another server (Magpie) that keeps its own customers' bids and calls Kontract for the public data: notices, bid documents, past awards, business search, website reading, permits. It never reads a session cookie or anyone's records here. Every call needs `Authorization: Bearer <key>` (a key from `KONTRACT_SERVICE_KEYS`) and `X-Workspace-Id: <a-z0-9->`, the customer it's for; anything wrong is one generic `401`. Each workspace gets 60 calls a minute and 10 Claude calls a minute (`429` with `Retry-After`).
+
+| Method and path | Returns |
+|---|---|
+| `GET /api/v1/health` (no key) | `{ok, samAsOf, notices, sledBids, permitFeeds: {ok, failing}}` |
+| `GET /api/v1/opportunities` | The query params of `/api/opportunities` (`limit` up to 100); results without descriptions |
+| `GET /api/v1/opportunities/:id` | `{opportunity}` with its description, or 404 |
+| `POST /api/v1/opportunities/:id/details` `{claude?, opportunity?}` | `{details}`: what the bid documents say, quotes trimmed to 300 characters, under 200 KB |
+| `POST /api/v1/opportunities/:id/breakdown` `{opportunity?}` | `{breakdown, source: "claude" \| "rules"}` |
+| `POST /api/v1/pricing` `{query, context?}` | Past awards, typical price and `recipients` (who won them) |
+| `POST /api/v1/subcontractors` `{query, location}` | Local businesses |
+| `POST /api/v1/websites/read` `{url}` | `{facts}` from a business's website |
+| `GET /api/v1/permits` | The query params of `/api/permits` |
+| `GET /api/v1/permits/contractors?state=&city=&work=` | `PermitContractor[]` |
+| `GET /api/v1/sources` | Permit and bid feeds with health, states, markets, trades |
+| `POST /api/v1/drafts` `{kind, deal, profile, subId?}` | NDJSON: the `/api/ai/draft` events, then `{type: "done", costMicro}` |
+| `GET /api/v1/usage?workspace=&month=YYYY-MM` | `{calls, costMicro, byEndpoint}` |
+
+`details` and `breakdown` look the notice up by id first and use the `opportunity` sent only when the id has closed, so a tracked bid stays readable (federal notices only: their documents are listed by SAM.gov from the id, so nothing in the copy decides what gets fetched). Paid calls (Claude, priced from the tokens used; Places or Apify; Firecrawl pages) set `X-Kontract-Cost-Micro` in millionths of a dollar, and free or cached ones set `0`; a draft reports its cost in the last event. Every call is a row in the `service_call` table (workspace, endpoint, cost, status, time), never the request body.
+
+The response types are in `src/lib/api-v1.ts`, one self-contained file a client copies. It's generated from the source by `npm run api-v1-types`, and `npm test` fails when it's stale. Changes are additive only; removing or renaming a field means `/api/v2`.
+
 ## How it's built
 
 Next.js (App Router) + TypeScript + Tailwind. One app serves the UI and a small JSON API.
@@ -204,7 +228,7 @@ npm run typecheck
 
 Accounts, bids, profiles and CRM contacts live in one SQLite file, `.data/kontract.db`; the SAM.gov index is `.data/sam-opportunities.jsonl`. Run it somewhere with a persistent disk: a VPS, or Railway/Render with a volume mounted and `DATA_DIR` pointing at it. `npm run build && npm start` runs the production server (it listens on `PORT`). It holds the notice index in memory (about 300–400 MB), and needs to reach sam.gov, usaspending.gov and the cities' open-data portals.
 
-On Railway: one service from this repo, a volume mounted at `/data`, and these variables: `DATA_DIR=/data`, `BETTER_AUTH_URL` (the public `https://…` URL; quote links, invites and the MCP server use it), `TRUSTED_IP_HEADER=x-real-ip` (so sign-in rate limits are per visitor), plus whichever API keys you use. For the paid plan, point a Stripe webhook at `https://<your-domain>/api/stripe/webhook`. `BETTER_AUTH_SECRET` is optional there: without it a secret is generated once into the volume. Anyone with the URL can create an account, so share it with the people you want.
+On Railway: one service from this repo, a volume mounted at `/data`, and these variables: `DATA_DIR=/data`, `BETTER_AUTH_URL` (the public `https://…` URL; quote links, invites and the MCP server use it), `TRUSTED_IP_HEADER=x-real-ip` (so sign-in rate limits are per visitor), plus whichever API keys you use, and `KONTRACT_SERVICE_KEYS` for the engine API. For the paid plan, point a Stripe webhook at `https://<your-domain>/api/stripe/webhook`. `BETTER_AUTH_SECRET` is optional there: without it a secret is generated once into the volume. Anyone with the URL can create an account, so share it with the people you want.
 
 A bids file from before accounts existed (`.data/kontract.json`) is imported into the first account created, then renamed.
 

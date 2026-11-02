@@ -2,6 +2,8 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
+import { addCost } from "./cost-meter";
+import { claudeCostMicro } from "./prices";
 import { breakdownPrompt, SYSTEM } from "./prompts";
 import type { Breakdown, Opportunity } from "./types";
 
@@ -19,6 +21,11 @@ export const fallback = () =>
   supportsFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {};
 
 export type Effort = "low" | "medium" | "high";
+
+/** Count a response's tokens against the current engine API request, if any (see cost-meter.ts). */
+export function billClaude(res: { model: string; usage: Parameters<typeof claudeCostMicro>[1] }): void {
+  addCost(claudeCostMicro(res.model, res.usage));
+}
 
 export class ClaudeError extends Error {
   constructor(
@@ -72,6 +79,7 @@ export async function claudeBreakdown(o: Opportunity): Promise<Breakdown> {
     system: SYSTEM,
     messages: [{ role: "user", content: breakdownPrompt(o) }],
   });
+  billClaude(res);
   if (res.stop_reason === "refusal") throw new ClaudeError("Claude declined to analyze this notice.", 422);
   if (!res.parsed_output) throw new ClaudeError("Claude's breakdown came back incomplete. Try again.", 502);
   return { ...res.parsed_output, source: "claude" };
@@ -101,6 +109,7 @@ export async function* streamDraft(prompt: string, effort: Effort, signal?: Abor
     }
   }
   const final = await stream.finalMessage();
+  billClaude(final);
   if (final.stop_reason === "refusal") yield { type: "error", message: "Claude declined to write this draft." };
   else if (final.stop_reason === "max_tokens") yield { type: "error", message: "The draft was cut off before it finished." };
 }

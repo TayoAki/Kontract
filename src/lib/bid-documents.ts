@@ -4,7 +4,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { extractBidDetails, type ReadDoc } from "./bid-details";
 import { buildCorpus, cleanPageMarkdown, documentLinks, orderDocs, verifyReading } from "./bid-reading";
-import { ClaudeError, fallback, getClient, hasClaude, MODEL } from "./claude";
+import { billClaude, ClaudeError, fallback, getClient, hasClaude, MODEL } from "./claude";
 import { docText, DocTextError, extOf, readable } from "./doc-text";
 import { hasFirecrawl, scrape } from "./firecrawl";
 import { fetchAttachments, hasSamKey } from "./sam";
@@ -236,6 +236,7 @@ export async function readBidWithClaude(o: Opportunity): Promise<BidDetails> {
         },
       ],
     });
+    billClaude(res);
     if (res.stop_reason === "refusal") throw new ClaudeError("Claude declined to read these documents.", 422);
     if (!res.parsed_output) throw new ClaudeError("Claude's reading came back incomplete. Try again.", 502);
     return verifyReading(res.parsed_output, corpus.docs);

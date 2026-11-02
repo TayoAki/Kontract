@@ -6,7 +6,7 @@ import { DATA_DIR, dataPath } from "./data-dir";
 // One SQLite file holds accounts (Better Auth's user/session/account/
 // verification tables) and each user's own records. Records are JSON
 // documents keyed by (user_id, id), so every query is scoped to one user.
-// Quote requests and feed health checks have their own tables.
+// Quote requests, feed health checks and engine API usage have their own tables.
 
 const g = globalThis as unknown as { __kontractDb?: DatabaseSync };
 
@@ -77,6 +77,17 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS lead_share_user ON lead_share (user_id, permit_id);
     CREATE INDEX IF NOT EXISTS lead_share_email ON lead_share (to_email);
+
+    -- One row per engine API call (/api/v1) from another server, for usage
+    -- and billing by workspace. Never holds request bodies.
+    CREATE TABLE IF NOT EXISTS service_call (
+      workspace_id TEXT NOT NULL,
+      endpoint TEXT NOT NULL,
+      cost_micro INTEGER NOT NULL,
+      status INTEGER NOT NULL,
+      at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS service_call_workspace ON service_call (workspace_id, at);
   `);
   g.__kontractDb = db;
   return db;

@@ -1,4 +1,6 @@
 import "server-only";
+import { addCost } from "./cost-meter";
+import { firecrawlCostMicro } from "./prices";
 
 // Firecrawl renders a page (JavaScript included) and returns it as Markdown
 // plus its links. Used to read subcontractors' websites and state/local bid
@@ -61,7 +63,7 @@ export async function scrape(url: string, opts: ScrapeOptions = {}): Promise<Scr
   const json = (await res.json().catch(() => ({}))) as {
     success?: boolean;
     error?: string;
-    data?: { markdown?: string; links?: string[]; metadata?: { url?: string; sourceURL?: string; title?: string | string[]; statusCode?: number; error?: string | null } };
+    data?: { markdown?: string; links?: string[]; metadata?: { url?: string; sourceURL?: string; title?: string | string[]; statusCode?: number; error?: string | null; creditsUsed?: number } };
   };
   if (!res.ok || json.success === false) {
     if (res.status === 401 || res.status === 403) throw new FirecrawlError("Firecrawl rejected the API key. Check FIRECRAWL_API_KEY.", 401);
@@ -70,6 +72,7 @@ export async function scrape(url: string, opts: ScrapeOptions = {}): Promise<Scr
     throw new FirecrawlError(json.error ? `Couldn't read the page: ${json.error}` : `Firecrawl error ${res.status}`, 502);
   }
   const m = json.data?.metadata ?? {};
+  addCost(firecrawlCostMicro(typeof m.creditsUsed === "number" && m.creditsUsed > 0 ? m.creditsUsed : 1));
   if (m.statusCode && m.statusCode >= 400) throw new FirecrawlError(`The site answered ${m.statusCode}.`, 502);
   return {
     markdown: json.data?.markdown ?? "",

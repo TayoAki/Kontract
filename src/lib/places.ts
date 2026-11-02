@@ -1,4 +1,6 @@
 import "server-only";
+import { addCost } from "./cost-meter";
+import { apifyCostMicro, placesSearchCostMicro } from "./prices";
 import { sampleSubcontractors } from "./sample-data";
 import { cached } from "./store";
 import type { Subcontractor } from "./types";
@@ -49,6 +51,7 @@ async function googlePlaces(text: string): Promise<FoundSub[]> {
     signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) throw new PlacesError(`Google Places error ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  addCost(placesSearchCostMicro());
   const body = (await res.json()) as {
     places?: {
       id: string;
@@ -106,6 +109,7 @@ async function apifyPlaces(text: string): Promise<FoundSub[]> {
     categoryName?: string;
     permanentlyClosed?: boolean;
   }[];
+  addCost(apifyCostMicro(items.length));
   return items
     .filter((i) => !i.permanentlyClosed)
     .map((i) => ({
