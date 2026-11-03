@@ -265,6 +265,54 @@ export interface BidReading {
 }
 
 /** Facts pulled from a notice's text and attachments. */
+/** One document in a bid's combined text (engine API /text). */
+export interface BidTextDocument {
+  /** "notice", "page" (a state or local bid's portal page), or the attachment's id (as in BidDetails.documents). */
+  id: string;
+  name: string;
+  read: "read" | "skipped" | "failed" | "scanned";
+  pages: number | null;
+  /** Characters of it in the combined text (0 when it isn't in it). */
+  chars: number;
+  /** Where its <document> tag starts in the combined text; null when it isn't in it. */
+  startsAt: number | null;
+  /** Only its opening and the paragraphs about the work are in the text. */
+  excerpted: boolean;
+  /** Why it was left out, skipped or couldn't be read. */
+  note?: string;
+}
+
+/** A page of a bid's combined document text (POST /api/v1/opportunities/:id/text). */
+export interface BidTextPage {
+  noticeId: string;
+  /** Same as BidDetails.fingerprint: changes when the attachments change. */
+  fingerprint: string;
+  totalChars: number;
+  offset: number;
+  /** Where the next page starts; null on the last page. */
+  nextOffset: number | null;
+  /** Every document, including scanned, failed and left-out ones. */
+  documents: BidTextDocument[];
+  /**
+   * The slice from offset, cut after a paragraph break. The whole text is the
+   * notice, then each readable document, each as <document name="...">...</document>;
+   * PDFs have a "[Page N]" line where each page starts. Long documents are
+   * excerpted ("[…]" marks the cut); wage determinations, sign-in sheets and
+   * maps are left out.
+   */
+  text: string;
+}
+
+/** Where a quote was found (POST /api/v1/opportunities/:id/quotes). */
+export interface QuoteCheck {
+  quote: string;
+  found: boolean;
+  /** The document it was actually found in, or null. */
+  doc: string | null;
+  /** The PDF page it starts on, or null. */
+  page: number | null;
+}
+
 export interface BidDetails {
   noticeId: string;
   readAt: string;

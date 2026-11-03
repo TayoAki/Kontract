@@ -142,6 +142,8 @@ For another server (Magpie) that keeps its own customers' bids and calls Kontrac
 | `GET /api/v1/opportunities/:id` | `{opportunity}` with its description, or 404 |
 | `POST /api/v1/opportunities/:id/details` `{claude?, opportunity?}` | `{details}`: what the bid documents say, quotes trimmed to 300 characters, under 200 KB |
 | `POST /api/v1/opportunities/:id/breakdown` `{opportunity?}` | `{breakdown, source: "claude" \| "rules"}` |
+| `POST /api/v1/opportunities/:id/text` `{offset?, limit?, opportunity?}` | The documents as one text for your own model, a page at a time (default 40,000 characters, at most 80,000; `nextOffset` is `null` on the last page), with where each document starts. Free |
+| `POST /api/v1/opportunities/:id/quotes` `{quotes: [{quote, doc?}], opportunity?}` | `{results: [{quote, found, doc, page}]}`: whether each quote (up to 100, 1,000 characters each) is really in the documents, and where. Free |
 | `POST /api/v1/pricing` `{query, context?}` | Past awards, typical price and `recipients` (who won them) |
 | `POST /api/v1/subcontractors` `{query, location}` | Local businesses |
 | `POST /api/v1/websites/read` `{url}` | `{facts}` from a business's website |
@@ -151,7 +153,9 @@ For another server (Magpie) that keeps its own customers' bids and calls Kontrac
 | `POST /api/v1/drafts` `{kind, deal, profile, subId?}` | NDJSON: the `/api/ai/draft` events, then `{type: "done", costMicro}` |
 | `GET /api/v1/usage?workspace=&month=YYYY-MM` | `{calls, costMicro, byEndpoint}` |
 
-`details` and `breakdown` look the notice up by id first and use the `opportunity` sent only when the id has closed, so a tracked bid stays readable (federal notices only: their documents are listed by SAM.gov from the id, so nothing in the copy decides what gets fetched). Paid calls (Claude, priced from the tokens used; Places or Apify; Firecrawl pages) set `X-Kontract-Cost-Micro` in millionths of a dollar, and free or cached ones set `0`; a draft reports its cost in the last event. Every call is a row in the `service_call` table (workspace, endpoint, cost, status, time), never the request body.
+`text` is the notice, then each readable document as `<document name="...">`, in reading order (amendments and the statement of work first), with a `[Page N]` line where each PDF page starts. Long documents are excerpted like the text sent to Claude (the opening, then the paragraphs about the work; `[…]` marks the cut), wage determinations, sign-in sheets and maps are left out, and the whole is capped at 400,000 characters. Pages are cut after a paragraph break and join back into the whole text. `documents` lists every attachment, scanned and failed ones too, with `startsAt` and a `note` when it isn't in the text. Paging through a bid downloads it once (it stays in memory for 30 minutes, shared with `details`). `quotes` matches the way Kontract checks Claude's quotes (spacing, case and punctuation ignored, at least 8 characters), in the named document first, then every other one, across the whole of each document, not just the excerpts.
+
+`details`, `breakdown`, `text` and `quotes` look the notice up by id first and use the `opportunity` sent only when the id has closed, so a tracked bid stays readable (federal notices only: their documents are listed by SAM.gov from the id, so nothing in the copy decides what gets fetched). Paid calls (Claude, priced from the tokens used; Places or Apify; Firecrawl pages) set `X-Kontract-Cost-Micro` in millionths of a dollar, and free or cached ones set `0`; a draft reports its cost in the last event. Every call is a row in the `service_call` table (workspace, endpoint, cost, status, time), never the request body.
 
 The response types are in `src/lib/api-v1.ts`, one self-contained file a client copies. It's generated from the source by `npm run api-v1-types`, and `npm test` fails when it's stale. Changes are additive only; removing or renaming a field means `/api/v2`.
 

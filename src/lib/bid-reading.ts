@@ -6,14 +6,16 @@ import type { ReadDoc } from "./bid-details.ts";
 // and checking that what comes back is really in the documents.
 
 /** Amendments and the statement of work first, then the solicitation, price forms, and specs last. */
-export function docRank(name: string): number {
+export function docRank(file: string): number {
+  // "A04_Statement_of_Work.pdf" reads as "A04 Statement of Work.pdf".
+  const name = file.replace(/_+/g, " ");
   if (/^notice$/i.test(name)) return 0;
-  if (/amend/i.test(name)) return 1;
+  if (/amend|\bamd\b/i.test(name)) return 1;
   if (/statement of work|\bSOW\b|\bPWS\b|performance work|scope of work|description of work/i.test(name)) return 2;
-  if (/\bRFQ\b|\bRFP\b|\bIFB\b|solicitation|combined synopsis|\bS0\d\b|\bSF[- ]?(1442|1449)\b/i.test(name)) return 3;
+  if (/\bRFQ\b|\bRFP\b|\bIFB\b|solicitation|\bsol\b|combined synopsis|\bS0\d\b|\bSF[- ]?(1442|1449)\b/i.test(name)) return 3;
   if (/price|pricing|bid schedule|breakdown|\bCLIN/i.test(name)) return 4;
   if (/question|answer|\bQ&A\b|\bRFI\b/i.test(name)) return 5;
-  if (/wage|decision|site visit log|sign-?in|map\b/i.test(name)) return 8;
+  if (/wage|decision|\bWD\b|\bDBA\b|davis.?bacon|site visit log|sign-?in|map\b/i.test(name)) return 8;
   if (/spec|drawing|plans?\b/i.test(name)) return 7;
   return 6;
 }
@@ -24,15 +26,32 @@ export function orderDocs<T extends { name: string; postedDate?: string | null }
 
 const JOB_WORDS = /\b(?:scope|bid item|base bid|alternate|deductive|additive|remove|demoli|install|replace|repair|provide|furnish|square feet|\bSF\b|sq\.? ?ft|linear feet|each|quantity|phase|work includes|description of work)\b/i;
 
-/** Long documents: the first part plus the paragraphs that talk about the work itself. */
-function excerpt(text: string, budget: number): string {
+const PAGE_LINE = /^\[Page \d+\]$/;
+
+/**
+ * Long documents: the first part plus the paragraphs that talk about the work
+ * itself. With `keepPages`, a PDF's [Page N] line is kept ahead of the first
+ * paragraph kept from that page, so excerpts still say where they came from.
+ */
+function excerpt(text: string, budget: number, keepPages = false): string {
   if (text.length <= budget) return text;
   const head = text.slice(0, Math.floor(budget * 0.4));
   const rest: string[] = [];
   let used = head.length;
+  let page = keepPages ? ([...head.matchAll(/\[Page \d+\]/g)].pop()?.[0] ?? null) : null;
+  let shown = page;
   for (const para of text.slice(head.length).split(/\n{1,2}/)) {
     if (used >= budget) break;
+    if (keepPages && PAGE_LINE.test(para)) {
+      page = para;
+      continue;
+    }
     if (para.length < 30 || !JOB_WORDS.test(para) || /\(End of (?:Clause|Provision)\)|\b52\.\d{3}-\d+/i.test(para)) continue;
+    if (page && page !== shown) {
+      rest.push(page);
+      used += page.length + 1;
+      shown = page;
+    }
     rest.push(para);
     used += para.length + 1;
   }
@@ -45,19 +64,50 @@ function excerpt(text: string, budget: number): string {
  * numbers are already pulled by the rules.
  */
 export function buildCorpus(docs: ReadDoc[], maxChars = 200_000): { text: string; docs: ReadDoc[] } {
+  const { text, docs: included } = assemble(docs, maxChars, false);
+  return { text, docs: included };
+}
+
+/** Where one document sits in a combined text. */
+export interface CorpusPart<T extends ReadDoc = ReadDoc> {
+  doc: T;
+  /** Where its <document> tag starts. */
+  startsAt: number;
+  /** Characters of its text included. */
+  chars: number;
+  excerpted: boolean;
+}
+
+/**
+ * The bid's documents as one text for another model to read (the engine API's
+ * /text): the same order and excerpting as buildCorpus, with [Page N] lines
+ * kept, up to 400,000 characters, and where each document starts.
+ */
+export function bidText<T extends ReadDoc>(docs: T[], maxChars = 400_000): { text: string; parts: CorpusPart<T>[] } {
+  const { text, parts } = assemble(docs, maxChars, true);
+  return { text, parts };
+}
+
+function assemble<T extends ReadDoc>(docs: T[], maxChars: number, keepPages: boolean): { text: string; docs: ReadDoc[]; parts: CorpusPart<T>[] } {
   const kept = orderDocs(docs.filter((d) => d.text.trim() && docRank(d.name) !== 8));
-  const parts: string[] = [];
+  const blocks: string[] = [];
   const included: ReadDoc[] = [];
+  const parts: CorpusPart<T>[] = [];
   let left = maxChars;
+  let at = 0;
   for (const d of kept) {
     if (left < 2000) break;
     const share = docRank(d.name) >= 7 ? Math.min(left, 30_000) : Math.min(left, 80_000);
-    const body = excerpt(d.text, share);
-    parts.push(`<document name="${d.name.replace(/"/g, "'")}">\n${body}\n</document>`);
+    const body = excerpt(d.text, share, keepPages);
+    const block = `<document name="${d.name.replace(/"/g, "'")}">\n${body}\n</document>`;
+    if (blocks.length) at += 2;
+    parts.push({ doc: d, startsAt: at, chars: body.length, excerpted: body !== d.text });
+    at += block.length;
+    blocks.push(block);
     included.push({ name: d.name, text: body });
     left -= body.length + d.name.length + 30;
   }
-  return { text: parts.join("\n\n"), docs: included };
+  return { text: blocks.join("\n\n"), docs: included, parts };
 }
 
 const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9$%.]+/g, " ").trim();
@@ -68,6 +118,54 @@ export function quoteFound(quote: string, docs: ReadDoc[], docName?: string): bo
   if (q.length < 8) return false;
   const pool = docs.filter((d) => !docName || d.name === docName);
   return (pool.length ? pool : docs).some((d) => squash(d.text).includes(q));
+}
+
+/** A document's text in its PDF pages (page null before the first [Page N] line, or when there are none), squashed and joined. */
+function squashedPages(text: string): { text: string; starts: { at: number; page: number | null }[] } {
+  const pieces = text.split(/^\[Page (\d+)\][ \t]*$/m);
+  const segs = [{ page: null as number | null, text: pieces[0] ?? "" }];
+  for (let i = 1; i < pieces.length; i += 2) segs.push({ page: Number(pieces[i]), text: pieces[i + 1] ?? "" });
+  let joined = "";
+  const starts: { at: number; page: number | null }[] = [];
+  for (const s of segs) {
+    const sq = squash(s.text);
+    if (!sq) continue;
+    if (joined) joined += " ";
+    starts.push({ at: joined.length, page: s.page });
+    joined += sq;
+  }
+  return { text: joined, starts };
+}
+
+export interface QuoteLocation {
+  found: boolean;
+  /** The document it was found in. */
+  doc: string | null;
+  /** The PDF page it starts on, when the document has pages. */
+  page: number | null;
+}
+
+/**
+ * Where a quote really is: quoteFound's matching (spacing, case and
+ * punctuation squashed, at least 8 characters), in the named document first,
+ * then every other one. Page lines are ignored, so a quote that runs across a
+ * page break still matches, and its page is where it starts.
+ */
+export function locateQuote(quote: string, docs: ReadDoc[], docName?: string | null): QuoteLocation {
+  const none: QuoteLocation = { found: false, doc: null, page: null };
+  const q = squash(quote.replace(/\[Page \d+\]/gi, " "));
+  if (q.length < 8) return none;
+  // The combined text writes " in a name as ', so either spelling names it.
+  const named = (d: ReadDoc) => docName != null && (d.name === docName || d.name.replace(/"/g, "'") === docName);
+  for (const d of [...docs.filter(named), ...docs.filter((d) => !named(d))]) {
+    const { text, starts } = squashedPages(d.text);
+    const at = text.indexOf(q);
+    if (at < 0) continue;
+    let page: number | null = null;
+    for (const s of starts) if (s.at <= at) page = s.page;
+    return { found: true, doc: d.name, page };
+  }
+  return none;
 }
 
 export interface RawReading {

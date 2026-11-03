@@ -42,3 +42,55 @@ export const withoutDescription = (o: Opportunity): Opportunity => {
   const { description: _description, ...rest } = o;
   return rest;
 };
+
+export const TEXT_PAGE = 40_000;
+export const MAX_TEXT_PAGE = 80_000;
+
+const whole = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+
+/** The /text body's offset and limit (limit capped at 80,000), or the error to send. */
+export function textPaging(body: { offset?: unknown; limit?: unknown } | null): { offset: number; limit: number } | string {
+  const offset = body?.offset ?? 0;
+  const limit = body?.limit ?? TEXT_PAGE;
+  if (!whole(offset) || !whole(limit) || limit < 1) return "offset and limit must be whole numbers, and limit at least 1.";
+  return { offset, limit: Math.min(limit, MAX_TEXT_PAGE) };
+}
+
+/**
+ * A slice of `text` from `offset`, at most `limit` characters, ending just
+ * after the last paragraph break in its second half (else a line break, else
+ * a space), so pages join back into the whole text. nextOffset is null on
+ * the last page.
+ */
+export function pageText(text: string, offset: number, limit: number): { offset: number; nextOffset: number | null; text: string } {
+  const start = Math.min(Math.max(0, offset), text.length);
+  let end = Math.min(start + Math.max(1, limit), text.length);
+  if (end < text.length) {
+    const window = text.slice(start, end);
+    for (const brk of ["\n\n", "\n", " "]) {
+      const i = window.lastIndexOf(brk);
+      if (i >= window.length / 2) {
+        end = start + i + brk.length;
+        break;
+      }
+    }
+  }
+  return { offset: start, nextOffset: end < text.length ? end : null, text: text.slice(start, end) };
+}
+
+export const MAX_QUOTES = 100;
+export const MAX_QUOTE_CHECK = 1_000;
+
+/** The /quotes body's list, or the error to send. */
+export function quoteList(v: unknown): { quote: string; doc: string | null }[] | string {
+  const bad = `Send quotes: a list of 1 to ${MAX_QUOTES}, each { quote, doc? }, with each quote up to 1,000 characters.`;
+  if (!Array.isArray(v) || v.length === 0 || v.length > MAX_QUOTES) return bad;
+  const out: { quote: string; doc: string | null }[] = [];
+  for (const q of v) {
+    if (!q || typeof q !== "object") return bad;
+    const { quote, doc } = q as { quote?: unknown; doc?: unknown };
+    if (typeof quote !== "string" || quote.length > MAX_QUOTE_CHECK || (doc != null && typeof doc !== "string")) return bad;
+    out.push({ quote, doc: doc ?? null });
+  }
+  return out;
+}

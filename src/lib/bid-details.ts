@@ -10,6 +10,8 @@ import type { BidBudget, BidDetails, BidDocument, Cited } from "./types.ts";
 export interface ReadDoc {
   name: string;
   text: string;
+  /** "notice", "page" (a state or local bid's portal page), or the attachment's id. */
+  id?: string;
 }
 
 const MONEY = String.raw`\$\s?\d[\d,]*(?:\.\d+)?(?:\s*(?:million|mil|M|thousand|K)\b)?`;

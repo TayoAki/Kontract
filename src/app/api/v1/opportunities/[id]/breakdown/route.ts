@@ -1,5 +1,5 @@
 import { claudeBreakdown, explainClaudeError, hasClaude, MODEL } from "@/lib/claude";
-import { noticeFor } from "@/lib/engine";
+import { NO_NOTICE, noticeFor } from "@/lib/engine";
 import { fail, json, readBody } from "@/lib/http";
 import { rulesBreakdown } from "@/lib/rules";
 import { withService } from "@/lib/service-auth";
@@ -15,7 +15,7 @@ const TTL = 30 * 24 * 60 * 60 * 1000;
 export const POST = withService("/api/v1/opportunities/:id/breakdown", async (req, caller, { params }: { params: Promise<{ id: string }> }) => {
   const body = await readBody<{ opportunity?: unknown }>(req);
   const o = await noticeFor((await params).id, body?.opportunity);
-  if (!o) return fail("No open notice with that id. For a closed federal notice, send the opportunity you saved.", 404);
+  if (!o) return fail(NO_NOTICE, 404);
   if (!hasClaude()) return json({ breakdown: rulesBreakdown(o), source: "rules" });
   const key = `breakdown:${MODEL}:${o.id}`;
   const hit = await cacheGet<Breakdown>(key);

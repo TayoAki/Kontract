@@ -55,6 +55,8 @@ export async function openOpportunity(id: string): Promise<Opportunity | undefin
   return (await samOpportunity(id)) ?? (await sledOpportunities().catch(() => [])).find((o) => o.id === id);
 }
 
+export const NO_NOTICE = "No open notice with that id. For a closed federal notice, send the opportunity you saved.";
+
 // SAM.gov notice ids (the only kind a caller's copy is taken for).
 const NOTICE_ID = /^[A-Za-z0-9_-]{1,100}$/;
 

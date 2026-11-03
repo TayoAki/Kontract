@@ -3,13 +3,13 @@ import { createHash } from "node:crypto";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { extractBidDetails, type ReadDoc } from "./bid-details";
-import { buildCorpus, cleanPageMarkdown, documentLinks, orderDocs, verifyReading } from "./bid-reading";
+import { bidText, buildCorpus, cleanPageMarkdown, docRank, documentLinks, locateQuote, orderDocs, verifyReading } from "./bid-reading";
 import { billClaude, ClaudeError, fallback, getClient, hasClaude, MODEL } from "./claude";
 import { docText, DocTextError, extOf, readable } from "./doc-text";
 import { hasFirecrawl, scrape } from "./firecrawl";
 import { fetchAttachments, hasSamKey } from "./sam";
 import { cached } from "./store";
-import type { BidDetails, BidDocument, Opportunity } from "./types";
+import type { BidDetails, BidDocument, BidTextDocument, Opportunity, QuoteCheck } from "./types";
 
 // Reads a notice's attachments. SAM.gov lists and serves public attachments
 // without an API key (the same endpoints its website uses), so this doesn't
@@ -57,7 +57,7 @@ async function portal(o: Opportunity): Promise<Portal> {
       const text = cleanPageMarkdown(p.markdown);
       return {
         documents: documentLinks(p.links, p.url).map((d): BidDocument => ({ id: d.url, name: d.name, url: d.url, size: null, postedDate: null, read: "skipped" })),
-        page: text ? { name: `${o.portal ?? "Bid"} page`, text } : null,
+        page: text ? { id: "page", name: `${o.portal ?? "Bid"} page`, text } : null,
       };
     });
   } catch (err) {
@@ -144,7 +144,7 @@ async function readAll(list: BidDocument[]): Promise<{ documents: BidDocument[];
           d.pages = doc.pages;
           d.chars = doc.text.length;
           if (doc.scanned) d.note = "A scan with no text layer";
-          else texts.push({ name: d.name, text: doc.text });
+          else texts.push({ id: d.id, name: d.name, text: doc.text });
         } catch (err) {
           d.read = "failed";
           d.note = err instanceof DocTextError ? err.message : err instanceof Error && err.name === "TimeoutError" ? "Download timed out" : "Couldn't read it";
@@ -152,28 +152,47 @@ async function readAll(list: BidDocument[]): Promise<{ documents: BidDocument[];
       }
     }),
   );
-  return { documents, texts: orderDocs(texts.map((t) => ({ ...t, postedDate: documents.find((d) => d.name === t.name)?.postedDate }))).map(({ name, text }) => ({ name, text })) };
+  return { documents, texts: orderDocs(texts.map((t) => ({ ...t, postedDate: documents.find((d) => d.id === t.id)?.postedDate }))).map(({ id, name, text }) => ({ id, name, text })) };
 }
 
-// Texts stay in memory for a while so a Claude reading right after doesn't download everything again.
-const g = globalThis as unknown as { __kontractBidTexts?: Map<string, { at: number; texts: ReadDoc[] }>; __kontractBidReads?: Map<string, Promise<BidDetails>> };
+// Texts stay in memory for a while so a Claude reading right after (or the
+// engine API paging through the text) doesn't download everything again.
+interface Texts {
+  /** The attachments, with how each read went. */
+  documents: BidDocument[];
+  /** The notice, a state or local bid's page, then each attachment's text. */
+  texts: ReadDoc[];
+}
+const g = globalThis as unknown as {
+  __kontractBidTexts?: Map<string, Texts & { at: number }>;
+  __kontractBidTextJobs?: Map<string, Promise<Texts>>;
+  __kontractBidReads?: Map<string, Promise<BidDetails>>;
+};
 const textCache = (g.__kontractBidTexts ??= new Map());
+const textJobs = (g.__kontractBidTextJobs ??= new Map());
 const inflight = (g.__kontractBidReads ??= new Map());
 
-function remember(key: string, texts: ReadDoc[]) {
-  textCache.set(key, { at: Date.now(), texts });
+function remember(key: string, t: Texts) {
+  textCache.set(key, { at: Date.now(), ...t });
   for (const [k, v] of textCache) if (textCache.size > 12 || Date.now() - v.at > 30 * 60 * 1000) textCache.delete(k);
 }
 
-async function textsFor(o: Opportunity, list: BidDocument[], fp: string): Promise<{ documents: BidDocument[]; texts: ReadDoc[] }> {
-  const page = o.source === "sled" ? (await portal(o)).page : null;
-  const notice: ReadDoc[] = [...(o.description ? [{ name: "Notice", text: o.description }] : []), ...(page ? [page] : [])];
-  const hit = textCache.get(`${o.id}:${fp}`);
-  if (hit) return { documents: list, texts: hit.texts };
-  const read = await readAll(list);
-  const texts = [...notice, ...read.texts];
-  remember(`${o.id}:${fp}`, texts);
-  return { documents: read.documents, texts };
+function textsFor(o: Opportunity, list: BidDocument[], fp: string): Promise<Texts> {
+  const key = `${o.id}:${fp}`;
+  const hit = textCache.get(key);
+  if (hit) return Promise.resolve({ documents: hit.documents ?? list, texts: hit.texts });
+  const running = textJobs.get(key);
+  if (running) return running;
+  const job = (async () => {
+    const page = o.source === "sled" ? (await portal(o)).page : null;
+    const notice: ReadDoc[] = [...(o.description ? [{ id: "notice", name: "Notice", text: o.description }] : []), ...(page ? [page] : [])];
+    const read = await readAll(list);
+    const t = { documents: read.documents, texts: [...notice, ...read.texts] };
+    remember(key, t);
+    return t;
+  })().finally(() => textJobs.delete(key));
+  textJobs.set(key, job);
+  return job;
 }
 
 /** The facts in a notice's text and attachments (rules only: free). */
@@ -242,4 +261,46 @@ export async function readBidWithClaude(o: Opportunity): Promise<BidDetails> {
     return verifyReading(res.parsed_output, corpus.docs);
   });
   return { ...details, reading };
+}
+
+async function loadTexts(o: Opportunity): Promise<Texts & { fingerprint: string }> {
+  const list = await listAttachments(o);
+  const fp = fingerprint(o, list);
+  return { ...(await textsFor(o, list, fp)), fingerprint: fp };
+}
+
+/**
+ * A bid's documents as one text for another model to read, with where each
+ * document starts in it (the engine API's /text). Free: no Claude; the
+ * attachments download once per attachment set while they're in memory.
+ */
+export async function bidDocumentText(o: Opportunity): Promise<{ fingerprint: string; text: string; documents: BidTextDocument[] }> {
+  const { documents, texts, fingerprint: fp } = await loadTexts(o);
+  const { text, parts } = bidText(texts);
+  const inText = new Map(parts.map((p) => [p.doc.id, p]));
+  const hasText = new Set(texts.filter((t) => t.text.trim()).map((t) => t.id));
+  const row = (id: string, name: string, read: BidDocument["read"], pages: number | null, note?: string): BidTextDocument => {
+    const p = inText.get(id);
+    const why =
+      note ??
+      (read !== "read" || p
+        ? undefined
+        : !hasText.has(id)
+          ? "No text in it."
+          : docRank(name) === 8
+            ? "Left out of the text: wage determinations, sign-in sheets and maps."
+            : "Left out of the text: it reached its 400,000-character limit.");
+    return { id, name, read, pages, chars: p?.chars ?? 0, startsAt: p?.startsAt ?? null, excerpted: p?.excerpted ?? false, ...(why ? { note: why } : {}) };
+  };
+  const lead = texts.filter((t) => t.id === "notice" || t.id === "page").map((t) => row(t.id!, t.name, "read", null));
+  const rows = [...lead, ...orderDocs(documents).map((d) => row(d.id, d.name, d.read, d.pages ?? null, d.note))];
+  // In the order they appear in the text, then the ones that aren't in it.
+  const where = (r: BidTextDocument) => r.startsAt ?? Number.MAX_SAFE_INTEGER;
+  return { fingerprint: fp, text, documents: rows.sort((a, b) => where(a) - where(b)) };
+}
+
+/** Where each quote is in the bid's documents (the whole of each, not just the excerpts). */
+export async function checkQuotes(o: Opportunity, quotes: { quote: string; doc?: string | null }[]): Promise<QuoteCheck[]> {
+  const { texts } = await loadTexts(o);
+  return quotes.map((q) => ({ quote: q.quote, ...locateQuote(q.quote, texts, q.doc) }));
 }

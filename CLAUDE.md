@@ -25,7 +25,7 @@ Kontract helps a small business win government service contracts as the prime co
 | `src/lib/csv.ts`, `sam-normalize.ts`, `opportunity-search.ts` | Streaming CSV + encoding, row → Opportunity (merging amendments), filters/sort/paging |
 | `src/lib/sam.ts` | SAM.gov API, only a fallback for attachment links (needs a key; ~10 requests/day without a role) |
 | `src/lib/doc-text.ts` | Text out of Word, Excel, PowerPoint, PDF and HTML attachments (zip-bomb and size limits; nothing executed) |
-| `src/lib/bid-details.ts`, `bid-reading.ts`, `bid-documents.ts` | Rules for budget/bonds/site visit/dates/requirements/forms with citations; what to send Claude and checking its quotes; listing + downloading SAM.gov attachments (public endpoints) and caching per attachment set |
+| `src/lib/bid-details.ts`, `bid-reading.ts`, `bid-documents.ts` | Rules for budget/bonds/site visit/dates/requirements/forms with citations; what to send Claude (or another model, paged, for `/api/v1`) and checking quotes; listing + downloading SAM.gov attachments (public endpoints) and caching per attachment set |
 | `src/lib/usaspending.ts`, `pricing-stats.ts` | Past awards, typical per-year price, past winners |
 | `src/lib/places.ts` | Local businesses via Google Places or Apify |
 | `src/lib/firecrawl.ts`, `site-facts.ts`, `sub-website.ts` | Firecrawl scrape (v2); emails/phones/licenses/services/area from a website; reading a sub's site (home + contact page, cached a month) |

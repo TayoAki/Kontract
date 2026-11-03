@@ -1,6 +1,6 @@
 import { BidReadError, readBid, readBidWithClaude } from "@/lib/bid-documents";
 import { explainClaudeError } from "@/lib/claude";
-import { noticeFor } from "@/lib/engine";
+import { NO_NOTICE, noticeFor } from "@/lib/engine";
 import { fail, json, readBody } from "@/lib/http";
 import { SamError } from "@/lib/sam";
 import { withService } from "@/lib/service-auth";
@@ -13,7 +13,7 @@ export const maxDuration = 180;
 export const POST = withService("/api/v1/opportunities/:id/details", async (req, caller, { params }: { params: Promise<{ id: string }> }) => {
   const body = await readBody<{ claude?: boolean; opportunity?: unknown }>(req);
   const o = await noticeFor((await params).id, body?.opportunity);
-  if (!o) return fail("No open notice with that id. For a closed federal notice, send the opportunity you saved.", 404);
+  if (!o) return fail(NO_NOTICE, 404);
   const claude = body?.claude === true;
   if (claude) {
     const limited = caller.claudeLimit();
